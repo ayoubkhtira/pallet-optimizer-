@@ -159,7 +159,7 @@ def get_excel_binary(df_res, df_cfg):
 with st.sidebar:
 
     if st.button("RETOUR PALETTISATION"):
-        st.switch_page("app2.py")
+        st.switch_page("app.py")
     
     st.markdown("---")
     st.subheader("📦 Données de la Palette")
@@ -301,4 +301,5 @@ st.markdown(f"""
     </div>
 </div>
 <p style="font-size:0.8rem; color:grey; margin-top:5px;">* Agencement optimisé selon les dimensions {p_L}x{p_W} cm.</p>
+
 """, unsafe_allow_html=True)
