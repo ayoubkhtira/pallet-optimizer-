@@ -122,6 +122,19 @@ for i, (bl, bw, bh) in enumerate(orientations):
 
 best = max(results, key=lambda x: x['Total'])
 
+# --- NOUVEAU: SAUVEGARDE POUR LA PAGE CONTENEUR ---
+if 'pallet_data' not in st.session_state:
+    st.session_state.pallet_data = {}
+
+st.session_state.pallet_data = {
+    'pal_L': pal_L,
+    'pal_w': pal_w,
+    'pal_H': best['Hauteur'] * best['Nb Couches'], # Hauteur réelle chargée
+    'box_per_pal': best['Total'],
+    'weight_per_pal': best['Poids (kg)'] + 25 # +25kg poids palette vide estimé
+}
+# ---------------------------------------------------
+
 # --- 5. AFFICHAGE DU HEADER (Composant Isolé) ---
 header_code = """
 <!DOCTYPE html>
@@ -179,7 +192,7 @@ header_code = """
 """
 components.html(header_code, height=200)
 
-# --- 6. SECTION KPI (CORRIGÉE SANS DOUBLES ACCOLADES CONFLICTUELLES) ---
+# --- 6. SECTION KPI ---
 col1, col2, col3, col4 = st.columns(4)
 kpis = [
     ("Capacité Totale", best['Total'], "Colis"),
@@ -205,7 +218,7 @@ for col, (label, value, unit) in zip([col1, col2, col3, col4], kpis):
 
 st.markdown("---")
 
-# --- 7. VISUALISATION 3D ---
+# --- 7. VISUALISATION 3D & RAPPORT ---
 c1, c2 = st.columns([1.5, 1], gap="large")
 
 with c1:
@@ -307,6 +320,13 @@ with c2:
     df_results = pd.DataFrame(results)
     csv = df_results.to_csv(index=False).encode('utf-8')
     st.download_button(label="📥 TÉLÉCHARGER LE RAPPORT CSV", data=csv, file_name='rapport.csv', mime='text/csv')
+    
+    # --- BOUTON DE NAVIGATION AJOUTÉ ICI ---
+    st.markdown("---")
+    st.markdown("### 🚢 Calcul Conteneur")
+    st.info("Utiliser ces dimensions pour calculer le remplissage d'un conteneur.")
+    if st.button("Aller au Calculateur Conteneur ➡️"):
+        st.switch_page("app3.py")
 
 with st.expander("🔄 Comparaison des 6 orientations possibles"):
     st.table(df_results[['Orientation', 'Hauteur', 'Total', 'Par Couche', 'Nb Couches', 'Poids (kg)']])
