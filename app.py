@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import io
 import requests
-import plotly.express as px
 import streamlit.components.v1 as components 
 import math
 
@@ -346,6 +344,7 @@ with st.form("feedback_form", clear_on_submit=True):
         if msg:
             send_telegram_feedback(name, msg)
             st.success("✅ Merci ! Votre avis a été envoyé et sera consulté.")
+
 
 
 
