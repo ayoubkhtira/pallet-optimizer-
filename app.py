@@ -20,6 +20,10 @@ def local_css():
     st.markdown(
         """
         <style>
+                /* Masquer les éléments natifs */
+        [data-testid="stSidebarNav"] { display: none !important; }
+        button[kind="headerNoPadding"] { display: none !important; }
+        [data-testid="stSidebar"] { display: none; } 
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
 
         .stApp {
@@ -315,6 +319,7 @@ with c2:
         st.switch_page("app3.py")
 with st.expander("🔄 Comparaison des 6 orientations possibles"):
     st.table(df_results[['Orientation', 'Hauteur', 'Total', 'Par Couche', 'Nb Couches', 'Poids (kg)']])
+
 
 
 
