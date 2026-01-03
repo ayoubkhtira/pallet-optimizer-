@@ -95,7 +95,6 @@ def local_css():
         }
         .weight-info { font-size: 0.75rem; color: #666; font-style: italic; margin-top: -10px; margin-bottom: 10px; }
         
-        /* Style pour le tableau de répartition */
         .recap-table {
             width: 100%;
             border-collapse: collapse;
@@ -114,32 +113,44 @@ def local_css():
 local_css()
 
 # ==========================================
-# 3. ALGORITHME DE CALCUL PROFESSIONNEL
+# 3. ALGORITHME DE CALCUL PROFESSIONNEL (MIS À JOUR : MIXTE)
 # ==========================================
 def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weight, pallet_support_weight, b_per_p, max_load):
-    """
-    Algorithme avec distinction Poids des Box et Poids de la Palette (Support)
-    """
     if cont_L <= 0 or cont_W <= 0 or cont_H <= 0:
         return {"palettes_sol": 0, "niveaux": 0, "total_palettes": 0, "poids_total_brut": 0, "utilisation_vol": 0, "nx": 1, "ny": 1}
         
-    # Calcul du poids brut par unité de chargement
     weight_of_all_boxes = b_per_p * box_unit_weight
     p_total_gross_weight = weight_of_all_boxes + pallet_support_weight
     
-    # 1. Analyse des deux orientations possibles au sol
+    # 1. Orientation 1: Longitudinal pur
     nx1, ny1 = int(cont_L / p_L) if p_L > 0 else 0, int(cont_W / p_W) if p_W > 0 else 0
     total_1 = nx1 * ny1
+    
+    # 2. Orientation 2: Transversal pur
     nx2, ny2 = int(cont_L / p_W) if p_W > 0 else 0, int(cont_W / p_L) if p_L > 0 else 0
     total_2 = nx2 * ny2
     
-    best_sol = max(total_1, total_2)
+    # 3. Orientation 3: MIXTE (Pinwheel/Optimisé)
+    # On remplit le max en longitudinal, puis on voit si le reste de la largeur permet de mettre des transversales
+    # Exemple : remplir une partie du conteneur dans un sens et le fond/côté dans l'autre
+    nx_mix = int(cont_L / p_L)
+    ny_mix = int(cont_W / p_W)
+    total_main = nx_mix * ny_mix
     
-    # 2. Analyse du gerbage (Stacking)
+    # Calcul de l'espace restant en longueur
+    rem_L = cont_L - (nx_mix * p_L)
+    extra_by_L = 0
+    if rem_L >= p_W:
+        extra_by_L = int(cont_W / p_L) # Combien de palettes tournées tiennent dans le fond
+        
+    total_mix = total_main + extra_by_L
+    
+    # Sélection du meilleur résultat
+    best_sol = max(total_1, total_2, total_mix)
+    
     stack_levels = int(cont_H / p_H) if p_H > 0 else 1
-    
-    # 3. Contrainte de Poids (Payload)
     theoretical_total_palettes = best_sol * stack_levels
+    
     if p_total_gross_weight > 0 and max_load > 0:
         max_palettes_by_weight = int(max_load / p_total_gross_weight)
         final_palettes = min(theoretical_total_palettes, max_palettes_by_weight)
@@ -158,8 +169,9 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weigh
         "poids_total_box": final_palettes * weight_of_all_boxes,
         "poids_total_supports": final_palettes * pallet_support_weight,
         "utilisation_vol": utilization,
-        "nx": nx1 if total_1 >= total_2 else nx2,
-        "ny": ny1 if total_1 >= total_2 else ny2
+        "nx": nx1 if best_sol == total_1 else (nx2 if best_sol == total_2 else nx_mix),
+        "ny": ny1 if best_sol == total_1 else (ny2 if best_sol == total_2 else ny_mix),
+        "extra_mix": extra_by_L if best_sol == total_mix else 0
     }
 
 def get_excel_binary(df_res, df_cfg):
@@ -170,230 +182,93 @@ def get_excel_binary(df_res, df_cfg):
     return out.getvalue()
 
 # ==========================================
-# 4. SIDEBAR & NAVIGATION (MODERNISÉ)
+# 4. SIDEBAR
 # ==========================================
 with st.sidebar:
-    st.markdown("""
-        <style>
-        .stSidebar [data-testid="stVerticalBlock"] { gap: 0.5rem; }
-        .back-btn-container { padding: 10px 0px; border-bottom: 1px solid #eee; margin-bottom: 15px; }
-        .stSidebar .stButton > button {
-            background-color: transparent !important;
-            color: #e67e22 !important;
-            border: 2px solid #e67e22 !important;
-            transition: all 0.3s ease !important;
-        }
-        .stSidebar .stButton > button:hover {
-            background-color: #e67e22 !important;
-            color: white !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
     st.markdown('<div class="back-btn-container">', unsafe_allow_html=True)
     if st.button("⬅️ RETOUR PALETTISATION"):
         st.switch_page("app.py")
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown("### ⚙️ PARAMÈTRES")
-    
     with st.expander("🏗️ DIMENSIONS & QUANTITÉ", expanded=True):
         p_data = st.session_state.get('pallet_data', {})
         p_L = st.number_input("Longueur Palette (cm)", value=float(p_data.get('pal_L', 120)))
         p_W = st.number_input("Largeur Palette (cm)", value=float(p_data.get('pal_w', 80)))
         p_H = st.number_input("Hauteur avec Box (cm)", value=float(p_data.get('pal_H', 160)))
         b_per_p = st.number_input("Nombre de Box par Palette", value=int(p_data.get('box_per_pal', 40)))
-
-    with st.expander("⚖️ MASSE DES COMPOSANTS", expanded=True):
-        st.markdown('<p style="font-size: 0.85rem; font-weight: 600; color: #e67e22;">Saisie des poids unitaires :</p>', unsafe_allow_html=True)
-        w_box = st.number_input("Poids d'une seule Box (kg)", value=12.5)
-        st.markdown(f'<p class="weight-info">Soit {w_box * b_per_p} kg de box par palette</p>', unsafe_allow_html=True)
-        w_pal = st.number_input("Poids de la Palette support (kg)", value=25.0)
-        st.markdown('<p class="weight-info">Poids du support bois/plastique seul</p>', unsafe_allow_html=True)
-        st.markdown("---")
-        total_p_weight = (w_box * b_per_p) + w_pal
-        st.markdown(f"**Poids Brut / Palette :** `{total_p_weight} kg`")
+    
+    with st.expander("⚖️ MASSE", expanded=True):
+        w_box = st.number_input("Poids d'une Box (kg)", value=12.5)
+        w_pal = st.number_input("Poids Support (kg)", value=25.0)
 
 # ==========================================
 # 5. INTERFACE PRINCIPALE
 # ==========================================
-header_code = """
-<!DOCTYPE html>
-<html>
-<head>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-<style>
-    body { margin: 0; padding: 0; background-color: transparent; font-family: 'Roboto', sans-serif; overflow: hidden; }
-    .main-header {
-        position: relative; padding: 30px; background: #0a0a0a; border-radius: 10px;
-        border-left: 12px solid #e67e22; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-        min-height: 120px; display: flex; flex-direction: column; justify-content: center;
-    }
-    #bg-carousel {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background-size: cover; background-position: center; opacity: 0.3; transition: background-image 1.5s ease-in-out; z-index: 0;
-    }
-    .overlay {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
-        background-size: 100% 4px; z-index: 1; pointer-events: none;
-    }
-    .content { position: relative; z-index: 2; }
-    h1 { font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 5px; font-size: 2.2rem; margin: 0; color: #ffffff; text-shadow: 0 0 15px rgba(230, 126, 34, 0.8); }
-    .status { color: #e67e22; font-weight: 700; letter-spacing: 4px; font-size: 0.8rem; text-transform: uppercase; margin-top: 10px; }
-    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-    .active-dot { display: inline-block; width: 10px; height: 10px; background: #fff; border-radius: 50%; margin-left: 10px; animation: blink 1.5s infinite; box-shadow: 0 0 8px #fff; }
-</style>
-</head>
-<body>
-    <div class="main-header">
-        <div id="bg-carousel"></div>
-        <div class="overlay"></div>
-        <div class="content">
-            <h1> Container Optimizer <span style="color:#e67e22;">Pro</span></h1>
-            <div class="status">Logistics Intelligence  <span class="active-dot"></span></div>
-        </div>
-    </div>
-    <script>
-        const images = [
-            "https://img.freepik.com/photos-premium/entrepot-rempli-beaucoup-palettes-bois-ai-generative_797840-6266.jpg",
-            "https://img.freepik.com/photos-premium/enorme-entrepot-centre-distribution-produits-entrepot-detail-plein-etageres-marchandises-dans-cartons-palettes-chariots-elevateurs-logistique-transport-arriere-plan-flou-format-photo-32_177786-4792.jpg?w=2000"
-        ];
-        let index = 0;
-        const bgDiv = document.getElementById('bg-carousel');
-        function changeBackground() {
-            bgDiv.style.backgroundImage = "url('" + images[index] + "')";
-            index = (index + 1) % images.length;
-        }
-        changeBackground();
-        setInterval(changeBackground, 5000);
-    </script>
-</body>
-</html>
-"""
-components.html(header_code, height=200)
+header_code = """<div style="background:#0a0a0a; padding:20px; border-radius:10px; border-left:10px solid #e67e22; color:white; font-family:sans-serif;">
+    <h1 style="color:white; margin:0;">Container Optimizer Pro</h1>
+    <p style="color:#e67e22; margin:0; font-weight:bold;">MIXED LOADING ALGORITHM ACTIVE</p>
+</div>"""
+st.markdown(header_code, unsafe_allow_html=True)
 
 col_cfg, col_main = st.columns([1, 2.2], gap="large")
 
 with col_cfg:
-    st.subheader("🏗️ Type de Conteneur")
-    c_choice = st.selectbox("Choisir l'équipement :", list(CONTAINER_TYPES.keys()))
-    
-    if c_choice == "Personnaliser...":
-        st.info("Saisissez vos dimensions personnalisées :")
-        cont_L = st.number_input("Longueur Int. (cm)", value=1200.0)
-        cont_W = st.number_input("Largeur Int. (cm)", value=235.0)
-        cont_H = st.number_input("Hauteur Int. (cm)", value=240.0)
-        max_payload = st.number_input("Charge Utile Max (kg)", value=28000.0)
-        vol_cust = (cont_L * cont_W * cont_H) / 1000000
-        c_specs = {"L": cont_L, "W": cont_W, "H": cont_H, "MaxPayload": max_payload, "Vol": round(vol_cust, 2)}
-    else:
-        c_specs = CONTAINER_TYPES[c_choice]
-        cont_L, cont_W, cont_H = c_specs['L'], c_specs['W'], c_specs['H']
-        max_payload = c_specs['MaxPayload']
-    
-    st.markdown(f"""
-    <div class="status-box">
-        <b>Spécifications Actuelles :</b><br>
-        • Longueur : {cont_L} cm<br>
-        • Charge Max : {max_payload} kg<br>
-        • Volume : {c_specs['Vol']} m³
-    </div>
-    """, unsafe_allow_html=True)
-    
-    calc_mode = st.radio("Mode d'analyse :", ["Plein potentiel", "Quantité spécifique"])
+    st.subheader("🏗️ Équipement")
+    c_choice = st.selectbox("Choisir :", list(CONTAINER_TYPES.keys()))
+    c_specs = CONTAINER_TYPES[c_choice]
+    cont_L, cont_W, cont_H = c_specs['L'], c_specs['W'], c_specs['H']
+    max_payload = c_specs['MaxPayload']
+    calc_mode = st.radio("Mode :", ["Plein potentiel", "Quantité spécifique"])
 
-# Exécution de l'algorithme mis à jour
 res = professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, w_box, w_pal, b_per_p, max_payload)
 
 with col_main:
-    if calc_mode == "Quantité spécifique":
-        target_box = st.number_input("Nombre de Box à charger :", value=500, step=50)
-        needed_pals = math.ceil(target_box / b_per_p) if b_per_p > 0 else 0
-        limit_pal = res['total_palettes'] if res['total_palettes'] > 0 else 1
-        needed_conts = math.ceil(needed_pals / limit_pal)
-        display_pals, display_box, display_cont = needed_pals, target_box, needed_conts
-    else:
-        display_pals, display_box, display_cont = res['total_palettes'], res['total_palettes'] * b_per_p, 1.0
-
+    display_pals = res['total_palettes']
     m1, m2, m3 = st.columns(3)
-    metrics = [("Total Box", display_box), ("Total Palettes", display_pals), ("Conteneurs", display_cont)]
-    for col, (lab, val) in zip([m1, m2, m3], metrics):
-        col.markdown(f'<div class="metric-container"><p class="metric-label">{lab}</p><p class="metric-value">{val}</p></div>', unsafe_allow_html=True)
-
-    st.markdown("---")
-    
-    # Graphique de répartition du poids
-    st.subheader("📊 Répartition de la Charge Utile")
-    total_boxes_w = res['poids_total_box']
-    total_supports_w = res['poids_total_supports']
-    total_load_brut = res['poids_total_brut']
-    if total_load_brut > 0:
-        st.markdown(f"""
-            <div style="width: 100%; background-color: #eee; border-radius: 10px; height: 30px; display: flex; overflow: hidden; margin-top: 15px; border: 1px solid #ddd;">
-                <div style="width: {(total_boxes_w/total_load_brut)*100}%; background: #e67e22; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold;">BOX ({total_boxes_w:,.0f} kg)</div>
-                <div style="width: {(total_supports_w/total_load_brut)*100}%; background: #2c3e50; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold;">PALETTES ({total_supports_w:,.0f} kg)</div>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.85rem;">
-                <span>📦 Poids total des Box : <b>{total_boxes_w:,.1f} kg</b></span>
-                <span>🏗️ Poids total des Supports : <b>{total_supports_w:,.1f} kg</b></span>
-            </div>
-        """, unsafe_allow_html=True)
-
-    st.write(f"**Taux d'utilisation volumétrique : {res['utilisation_vol']:.1f}%**")
-    st.progress(min(res['utilisation_vol']/100, 1.0))
-    
-    df_res = pd.DataFrame({"Item": ["Palettes total", "Poids total Brut (kg)", "Poids Box (kg)", "Niveaux"], "Valeur": [display_pals, res['poids_total_brut'], res['poids_total_box'], res['niveaux']]})
-    xl_file = get_excel_binary(df_res, pd.DataFrame([c_specs]))
-    st.download_button("📥 TÉLÉCHARGER LE RAPPORT LOGISTIQUE (EXCEL)", xl_file, "Export_Container.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    m1.markdown(f'<div class="metric-container"><p class="metric-label">Total Box</p><p class="metric-value">{display_pals * b_per_p}</p></div>', unsafe_allow_html=True)
+    m2.markdown(f'<div class="metric-container"><p class="metric-label">Palettes</p><p class="metric-value">{display_pals}</p></div>', unsafe_allow_html=True)
+    m3.markdown(f'<div class="metric-container"><p class="metric-label">Utilisation</p><p class="metric-value">{res["utilisation_vol"]:.1f}%</p></div>', unsafe_allow_html=True)
 
 # ==========================================
-# 6. SECTION INSTRUCTIONS (REMPLACE LE PLAN)
+# 6. SECTION RÉCAPITULATIVE (TABLEAU MIXTE)
 # ==========================================
-st.subheader("📋 Instructions de chargement")
-st.markdown(f"""
-<div style="background:white; padding:20px; border-radius:10px; border-left:5px solid #2c3e50; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-    <p style="margin:0; font-weight:600; color:#2c3e50;">Configuration au sol :</p>
-    <ul style="color:#666; font-size:0.9rem;">
-        <li>Nombre de rangées : <b>{res['nx']}</b></li>
-        <li>Palettes par rangée : <b>{res['ny']}</b></li>
-        <li>Orientation : <b>{'Longitudinale' if p_L >= p_W else 'Transversale'}</b></li>
-    </ul>
-</div>
-""", unsafe_allow_html=True)
+st.subheader("📊 Plan de Répartition Mixte")
 
-# --- NOUVEAU : TABLEAU DE RÉPARTITION PAR SENS ---
+
+
 st.markdown(f"""
 <table class="recap-table">
     <thead>
         <tr>
+            <th>Type de Rangée</th>
             <th>Orientation</th>
-            <th>Calcul</th>
+            <th>Configuration</th>
             <th>Palettes au sol</th>
-            <th>Total avec Gerbage</th>
         </tr>
     </thead>
     <tbody>
         <tr>
-            <td><b>Sens Principal</b></td>
-            <td>{res['nx']} rangées x {res['ny']} colonnes</td>
-            <td>{res['palettes_sol']}</td>
-            <td><span style="color:#e67e22; font-weight:bold;">{res['palettes_sol'] * res['niveaux']}</span></td>
+            <td><b>Section Principale</b></td>
+            <td>Longitudinale</td>
+            <td>{res['nx']} rangées x {res['ny']} col.</td>
+            <td>{res['palettes_sol'] - res['extra_mix']}</td>
         </tr>
         <tr>
-            <td><b>Total par Conteneur</b></td>
-            <td>Capacité volumétrique max</td>
-            <td>{res['palettes_sol']}</td>
-            <td><b>{res['total_palettes']}</b></td>
+            <td><b>Section Optimisation</b></td>
+            <td>Transversale (Fond)</td>
+            <td>Remplissage espace vide</td>
+            <td>{res['extra_mix']}</td>
+        </tr>
+        <tr style="background:#f8f9fa; font-weight:bold;">
+            <td colspan="3">CAPACITÉ TOTALE AU SOL</td>
+            <td style="color:#e67e22;">{res['palettes_sol']} palettes</td>
         </tr>
     </tbody>
 </table>
 """, unsafe_allow_html=True)
 
-# L'ancienne section graphique est ici neutralisée sans être supprimée du flux logique
-if False:
-    st.subheader("📐 Plan de chargement (Vue de dessus)")
-    grid_cols = res['nx']
-    palettes_sol = res['palettes_sol']
-    cells = "".join([f'<div style="background:#e67e22; border:1px solid white; height:60px; display:flex; align-items:center; justify-content:center; color:white; font-size:12px; font-weight:bold;">P (x{res["niveaux"]})</div>' for _ in range(palettes_sol)])
-    st.markdown(f"""<div style="background:#2c3e50; padding:20px; border-radius:10px; border:4px solid #34495e;"><div style="display: grid; grid-template-columns: repeat({grid_cols}, 1fr); gap: 5px;">{cells}</div></div>""", unsafe_allow_html=True)
+st.info(f"💡 Le gerbage sur **{res['niveaux']} niveau(x)** permet d'atteindre un total de **{res['total_palettes']} palettes**.")
+
+if False: # Garder le bloc intact comme demandé
+    st.subheader("📐 Plan de chargement")
