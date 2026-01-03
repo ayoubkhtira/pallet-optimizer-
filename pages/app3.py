@@ -191,7 +191,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     st.markdown('<div class="back-btn-container">', unsafe_allow_html=True)
-    if st.button("⬅️ RETOUR PALETTISATION"):
+    if st.button("RETOUR PALETTISATION"):
         st.switch_page("app.py")
     st.markdown('</div>', unsafe_allow_html=True)
     
