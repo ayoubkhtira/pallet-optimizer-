@@ -95,6 +95,7 @@ def local_css():
         }
         .weight-info { font-size: 0.75rem; color: #666; font-style: italic; margin-top: -10px; margin-bottom: 10px; }
         
+        /* Style pour le tableau de répartition */
         .recap-table {
             width: 100%;
             border-collapse: collapse;
@@ -113,7 +114,7 @@ def local_css():
 local_css()
 
 # ==========================================
-# 3. ALGORITHME DE CALCUL PROFESSIONNEL (MIS À JOUR : MIXTE)
+# 3. ALGORITHME DE CALCUL PROFESSIONNEL (OPTIMISÉ MIXTE)
 # ==========================================
 def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weight, pallet_support_weight, b_per_p, max_load):
     if cont_L <= 0 or cont_W <= 0 or cont_H <= 0:
@@ -129,21 +130,39 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weigh
     # 2. Orientation Transversal pur
     nx2, ny2 = int(cont_L / p_W) if p_W > 0 else 0, int(cont_W / p_L) if p_L > 0 else 0
     total_2 = nx2 * ny2
+
+    # 3. LOGIQUE MIXTE : On calcule l'espace restant au fond
+    # Scénario A : Corps en Longi + Fond en Transversal
+    nx_mix_a = nx1
+    ny_mix_a = ny1
+    extra_a = 0
+    rem_L_a = cont_L - (nx_mix_a * p_L)
+    if rem_L_a >= p_W:
+        extra_a = int(cont_W / p_L)
+    total_mix_a = total_1 + extra_a
+
+    # Scénario B : Corps en Transversal + Fond en Longi
+    nx_mix_b = nx2
+    ny_mix_b = ny2
+    extra_b = 0
+    rem_L_b = cont_L - (nx_mix_b * p_W)
+    if rem_L_b >= p_L:
+        extra_b = int(cont_W / p_W)
+    total_mix_b = total_2 + extra_b
     
-    # 3. Orientation MIXTE (Calcul de l'espace résiduel en fond de conteneur)
-    # On privilégie le sens longitudinal pour le corps, et on teste le transversal au fond
-    nx_mix = nx1
-    ny_mix = ny1
-    rem_L = cont_L - (nx_mix * p_L)
-    extra_by_L = 0
-    if rem_L >= p_W: # Si on peut tourner les palettes au fond
-        extra_by_L = int(cont_W / p_L)
+    # Trouver la meilleure combinaison
+    best_sol = max(total_1, total_2, total_mix_a, total_mix_b)
     
-    total_mix = (nx_mix * ny_mix) + extra_by_L
-    
-    # Choix de la meilleure option
-    best_sol = max(total_1, total_2, total_mix)
-    
+    # Déterminer les détails de la meilleure solution
+    if best_sol == total_mix_a:
+        nx_final, ny_final, extra_final, orient_p = nx1, ny1, extra_a, "Longitudinale"
+    elif best_sol == total_mix_b:
+        nx_final, ny_final, extra_final, orient_p = nx2, ny2, extra_b, "Transversale"
+    elif best_sol == total_1:
+        nx_final, ny_final, extra_final, orient_p = nx1, ny1, 0, "Longitudinale"
+    else:
+        nx_final, ny_final, extra_final, orient_p = nx2, ny2, 0, "Transversale"
+
     stack_levels = int(cont_H / p_H) if p_H > 0 else 1
     theoretical_total_palettes = best_sol * stack_levels
     
@@ -157,19 +176,6 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weigh
     vol_cont = cont_L * cont_W * cont_H
     utilization = (vol_pal / vol_cont) * 100 if vol_cont > 0 else 0
     
-    # Détermination des paramètres d'affichage selon le gagnant
-    if best_sol == total_mix and total_mix > max(total_1, total_2):
-        nx_final, ny_final = nx_mix, ny_mix
-        is_mixed = True
-    elif best_sol == total_2:
-        nx_final, ny_final = nx2, ny2
-        extra_by_L = 0
-        is_mixed = False
-    else:
-        nx_final, ny_final = nx1, ny1
-        extra_by_L = 0
-        is_mixed = False
-
     return {
         "palettes_sol": best_sol,
         "niveaux": stack_levels,
@@ -180,8 +186,8 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weigh
         "utilisation_vol": utilization,
         "nx": nx_final,
         "ny": ny_final,
-        "extra_mix": extra_by_L,
-        "is_mixed": is_mixed
+        "extra": extra_final,
+        "orient_p": orient_p
     }
 
 def get_excel_binary(df_res, df_cfg):
@@ -192,9 +198,26 @@ def get_excel_binary(df_res, df_cfg):
     return out.getvalue()
 
 # ==========================================
-# 4. SIDEBAR
+# 4. SIDEBAR & NAVIGATION
 # ==========================================
 with st.sidebar:
+    st.markdown("""
+        <style>
+        .stSidebar [data-testid="stVerticalBlock"] { gap: 0.5rem; }
+        .back-btn-container { padding: 10px 0px; border-bottom: 1px solid #eee; margin-bottom: 15px; }
+        .stSidebar .stButton > button {
+            background-color: transparent !important;
+            color: #e67e22 !important;
+            border: 2px solid #e67e22 !important;
+            transition: all 0.3s ease !important;
+        }
+        .stSidebar .stButton > button:hover {
+            background-color: #e67e22 !important;
+            color: white !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     st.markdown('<div class="back-btn-container">', unsafe_allow_html=True)
     if st.button("⬅️ RETOUR PALETTISATION"):
         st.switch_page("app.py")
@@ -207,29 +230,37 @@ with st.sidebar:
         p_W = st.number_input("Largeur Palette (cm)", value=float(p_data.get('pal_w', 80)))
         p_H = st.number_input("Hauteur avec Box (cm)", value=float(p_data.get('pal_H', 160)))
         b_per_p = st.number_input("Nombre de Box par Palette", value=int(p_data.get('box_per_pal', 40)))
-    
-    with st.expander("⚖️ MASSE", expanded=True):
-        w_box = st.number_input("Poids d'une Box (kg)", value=12.5)
-        w_pal = st.number_input("Poids Support (kg)", value=25.0)
+
+    with st.expander("⚖️ MASSE DES COMPOSANTS", expanded=True):
+        w_box = st.number_input("Poids d'une seule Box (kg)", value=12.5)
+        w_pal = st.number_input("Poids de la Palette support (kg)", value=25.0)
 
 # ==========================================
 # 5. INTERFACE PRINCIPALE
 # ==========================================
-header_code = """<div style="background:#0a0a0a; padding:20px; border-radius:10px; border-left:10px solid #e67e22; color:white; font-family:sans-serif;">
-    <h1 style="color:white; margin:0;">Container Optimizer Pro</h1>
-    <p style="color:#e67e22; margin:0; font-weight:bold;">ALGORITHME DE CHARGEMENT MIXTE ACTIVÉ</p>
+header_code = """<div style="background:#0a0a0a; padding:20px; border-radius:10px; border-left:12px solid #e67e22; color:white; font-family:sans-serif;">
+    <h1 style="color:white; margin:0;">Container Optimizer <span style="color:#e67e22;">Pro</span></h1>
+    <p style="color:#e67e22; margin:0; font-weight:bold; letter-spacing:2px;">MIXED LOADING ALGORITHM ACTIVE</p>
 </div>"""
 st.markdown(header_code, unsafe_allow_html=True)
 
 col_cfg, col_main = st.columns([1, 2.2], gap="large")
 
 with col_cfg:
-    st.subheader("🏗️ Équipement")
-    c_choice = st.selectbox("Choisir :", list(CONTAINER_TYPES.keys()))
-    c_specs = CONTAINER_TYPES[c_choice]
-    cont_L, cont_W, cont_H = c_specs['L'], c_specs['W'], c_specs['H']
-    max_payload = c_specs['MaxPayload']
-    calc_mode = st.radio("Mode :", ["Plein potentiel", "Quantité spécifique"])
+    st.subheader("🏗️ Type de Conteneur")
+    c_choice = st.selectbox("Choisir l'équipement :", list(CONTAINER_TYPES.keys()))
+    if c_choice == "Personnaliser...":
+        cont_L = st.number_input("Longueur Int. (cm)", value=1200.0)
+        cont_W = st.number_input("Largeur Int. (cm)", value=235.0)
+        cont_H = st.number_input("Hauteur Int. (cm)", value=240.0)
+        max_payload = st.number_input("Charge Utile Max (kg)", value=28000.0)
+        c_specs = {"L": cont_L, "W": cont_W, "H": cont_H, "MaxPayload": max_payload, "Vol": 76}
+    else:
+        c_specs = CONTAINER_TYPES[c_choice]
+        cont_L, cont_W, cont_H = c_specs['L'], c_specs['W'], c_specs['H']
+        max_payload = c_specs['MaxPayload']
+    
+    calc_mode = st.radio("Mode d'analyse :", ["Plein potentiel", "Quantité spécifique"])
 
 res = professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, w_box, w_pal, b_per_p, max_payload)
 
@@ -237,50 +268,46 @@ with col_main:
     display_pals = res['total_palettes']
     m1, m2, m3 = st.columns(3)
     m1.markdown(f'<div class="metric-container"><p class="metric-label">Total Box</p><p class="metric-value">{display_pals * b_per_p}</p></div>', unsafe_allow_html=True)
-    m2.markdown(f'<div class="metric-container"><p class="metric-label">Palettes</p><p class="metric-value">{display_pals}</p></div>', unsafe_allow_html=True)
+    m2.markdown(f'<div class="metric-container"><p class="metric-label">Total Palettes</p><p class="metric-value">{display_pals}</p></div>', unsafe_allow_html=True)
     m3.markdown(f'<div class="metric-container"><p class="metric-label">Utilisation</p><p class="metric-value">{res["utilisation_vol"]:.1f}%</p></div>', unsafe_allow_html=True)
 
 # ==========================================
-# 6. SECTION RÉCAPITULATIVE (TABLEAU MIXTE)
+# 6. PLAN DE RÉPARTITION MIXTE
 # ==========================================
-st.subheader("📊 Plan de Répartition Mixte")
+st.subheader("📋 Plan de Répartition Combiné")
 
 st.markdown(f"""
 <table class="recap-table">
     <thead>
         <tr>
-            <th>Zone du Conteneur</th>
+            <th>Zone</th>
             <th>Orientation</th>
-            <th>Détails des rangées</th>
+            <th>Configuration</th>
             <th>Palettes au sol</th>
         </tr>
     </thead>
     <tbody>
         <tr>
-            <td><b>Corps Principal</b></td>
-            <td>{'Longitudinale' if not res['is_mixed'] and p_L >= p_W else 'Mixte/Optimisée'}</td>
+            <td><b>Corps de chargement</b></td>
+            <td>{res['orient_p']}</td>
             <td>{res['nx']} rangées x {res['ny']} col.</td>
-            <td>{res['palettes_sol'] - res['extra_mix']}</td>
+            <td>{res['palettes_sol'] - res['extra']}</td>
         </tr>
         <tr>
-            <td><b>Zone d'Optimisation (Fond)</b></td>
-            <td>Transversale</td>
-            <td>Espace résiduel utilisé</td>
-            <td>{res['extra_mix']}</td>
+            <td><b>Espace résiduel (Fond)</b></td>
+            <td>{'Transversale' if res['orient_p'] == 'Longitudinale' else 'Longitudinale'}</td>
+            <td>Optimisation du vide</td>
+            <td>{res['extra']}</td>
         </tr>
         <tr style="background:#f8f9fa; font-weight:bold;">
-            <td colspan="3">TOTAL PALETTES AU SOL</td>
+            <td colspan="3">TOTAL CAPACITÉ SOL</td>
             <td style="color:#e67e22;">{res['palettes_sol']}</td>
-        </tr>
-        <tr style="background:#eee; font-weight:bold;">
-            <td colspan="3">CAPACITÉ TOTALE (AVEC GERBAGE)</td>
-            <td style="color:#2c3e50;">{res['total_palettes']}</td>
         </tr>
     </tbody>
 </table>
 """, unsafe_allow_html=True)
 
-st.info(f"💡 Le plan mixte utilise {res['extra_mix']} palette(s) tournée(s) pour optimiser les derniers centimètres du conteneur.")
+st.info(f"💡 Le gerbage sur **{res['niveaux']} niveau(x)** permet d'atteindre **{res['total_palettes']} palettes** au total.")
 
-if False: # Garder le bloc intact comme demandé
+if False:
     st.subheader("📐 Plan de chargement")
