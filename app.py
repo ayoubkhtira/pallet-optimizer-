@@ -214,13 +214,90 @@ for col, (label, value, unit) in zip([col1, col2, col3, col4], kpis):
 st.markdown("---")
 
 # --- 8. VISUALISATION ET RAPPORT (Toutes vos lignes conservées) ---
+
+
 c1, c2 = st.columns([1.5, 1], gap="large")
 
 with c1:
     st.subheader("📐 Schémas de Palettisation")
-    # [Logique du schéma visuel HTML conservée ici]
-    st.write(f"Plan au sol pour l'orientation {best['Orientation']}")
-    # (Votre code HTML/JS pour l'animation 3D et le schéma 2D vient ici)
+    nx, ny = int(best['nx']), int(best['ny'])
+    par_couche, nb_layers = int(best['Par Couche']), int(best['Nb Couches'])
+    label_box = "Box" if nx < 12 else ""
+    grid_boxes_html = f'<div style="background: #ecf0f1; border: 1px solid #bdc3c7; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #95a5a6; font-family: sans-serif;">{label_box}</div>' * par_couche
+    
+    max_visu = min(nb_layers, 15)
+    layers_stack_html = ""
+    for i in range(max_visu):
+        progression = i / max_visu if max_visu > 1 else 0
+        r, g, b = int(211 + (32 * progression)), int(84 + (72 * progression)), int(0 + (18 * progression))
+        delay = i * 0.15 
+        layers_stack_html += f"""
+        <div class="layer-item" data-delay="{delay}" style="
+            position: absolute; bottom: {i * 14}px; left: calc(50% + {i * 3}px); 
+            transform: translateX(-50%) skewX(-20deg); width: 75%; height: 22px; 
+            background: linear-gradient(to right, rgb({r},{g},{b}), #e67e22); 
+            border: 1.5px solid rgb({r-30},{g-30},{b}); border-radius: 3px; z-index: {100-i}; 
+            display: flex; align-items: center; justify-content: center; color: white; 
+            font-family: sans-serif; font-size: 10px; font-weight: 800;
+            box-shadow: 3px 3px 8px rgba(0,0,0,0.15); opacity: 0;
+            animation: slideUp 0.5s ease-out {delay}s forwards;
+        ">
+            <span style="transform: skewX(20deg);">COUCHE {i+1}</span>
+        </div>
+        """
+
+    html_visual = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+        body {{ margin: 0; padding: 0; background: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }}
+        @keyframes slideUp {{
+            0% {{ opacity: 0; transform: translateY(50px) translateX(-50%) skewX(-20deg); }}
+            100% {{ opacity: 1; transform: translateY(0) translateX(-50%) skewX(-20deg); }}
+        }}
+        .main-container {{ display: flex; flex-direction: column; height: 100vh; padding: 15px; box-sizing: border-box; }}
+        .btn-replay {{ background: #e67e22; color: white; border: none; padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 0.75rem; font-weight: bold; }}
+        .canvas-3d {{ background: #f8f9fa; flex-grow: 1; width: 100%; position: relative; border-radius: 12px; border: 1px solid #eee; overflow: hidden; min-height: 300px; }}
+        .grid-2d {{ background: #5e2f0d; padding: 10px; border-radius: 8px; width: 80%; max-width: 400px; margin-bottom: 20px; }}
+    </style>
+    </head>
+    <body>
+    <div class="main-container">
+        <p style="color:#7f8c8d; font-size:0.75rem; font-weight:bold; text-transform:uppercase; margin:0 0 10px 0;">Plan au sol</p>
+        <div class="grid-2d">
+            <div style="display: grid; grid-template-columns: repeat({nx}, 1fr); grid-template-rows: repeat({ny}, 1fr); gap: 4px; aspect-ratio: {pal_L}/{pal_w};">
+                {grid_boxes_html}
+            </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <p style="color:#7f8c8d; font-size:0.75rem; font-weight:bold; text-transform:uppercase; margin:0;">Volume ({nb_layers} couches)</p>
+            <button class="btn-replay" onclick="replayAnimation()">🔄 Rejouer l'animation</button>
+        </div>
+        <div class="canvas-3d">
+            <div id="stack-container" style="position: absolute; bottom: 60px; width: 100%; height: 100%;">
+                {layers_stack_html}
+                <div style="position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); width: 82%; height: 14px; background: #8b4513; border-radius: 2px; z-index: 101;"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function replayAnimation() {{
+            const container = document.getElementById('stack-container');
+            const layers = container.querySelectorAll('.layer-item');
+            layers.forEach(layer => {{
+                layer.style.animation = 'none';
+                layer.offsetHeight; 
+                const d = layer.getAttribute('data-delay');
+                layer.style.animation = `slideUp 0.5s ease-out ${{d}}s forwards`;
+            }});
+        }}
+    </script>
+    </body>
+    </html>
+    """
+    components.html(html_visual, height=750, scrolling=False)
+
 
 with c2:
     st.subheader("📋 Rapport d'Optimisation")
@@ -234,3 +311,4 @@ with c2:
 
 with st.expander("🔄 Comparaison des 6 orientations possibles"):
     st.table(df_results[['Orientation', 'Hauteur', 'Total', 'Par Couche', 'Nb Couches', 'Poids (kg)']])
+
