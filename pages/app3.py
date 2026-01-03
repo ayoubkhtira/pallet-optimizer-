@@ -28,7 +28,16 @@ def local_css():
     st.markdown(
         """
         <style>
+        [data-testid="stSidebarNav"] { display: none !important; }
+        button[kind="headerNoPadding"] { display: none !important; }
+        [data-testid="stSidebarUserContent"] { padding-top: 20px !important; }
+        /* ----------------- */
+
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        
+        .stApp {
+            background-color: #f8f9fa;
+...
 
         .stApp {
             background-color: #f8f9fa;
