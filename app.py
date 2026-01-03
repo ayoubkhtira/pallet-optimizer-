@@ -202,9 +202,6 @@ components.html(header_code, height=200)
 if st.button("🛠️CONFIGURATION"):
     st.session_state.view_mode = 'settings'
     st.rerun()
-if st.button("CONTENEUR"):
-    st.switch_page("app.py")
-
 # --- 7. SECTION KPI (Toutes vos lignes conservées) ---
 col1, col2, col3, col4 = st.columns(4)
 kpis = [("Capacité Totale", best['Total'], "Colis"), ("Par Couche", best['Par Couche'], "Colis"), ("Nombre de Couches", best['Nb Couches'], "Niveaux"), ("Poids Estimé", f"{int(best['Poids (kg)'])}", "kg")]
@@ -310,9 +307,15 @@ with c2:
     
     df_results = pd.DataFrame(results)
     st.download_button("📥 TÉLÉCHARGER LE RAPPORT CSV", df_results.to_csv(index=False).encode('utf-8'), "rapport.csv")
-
+    # --- BOUTON DE NAVIGATION AJOUTÉ ICI ---
+    st.markdown("---")
+    st.markdown("### 🚢 Calcul Conteneur")
+    st.info("Utiliser ces dimensions pour calculer le remplissage d'un conteneur.")
+    if st.button("Aller au Calculateur Conteneur ➡️"):
+        st.switch_page("app3.py")
 with st.expander("🔄 Comparaison des 6 orientations possibles"):
     st.table(df_results[['Orientation', 'Hauteur', 'Total', 'Par Couche', 'Nb Couches', 'Poids (kg)']])
+
 
 
 
