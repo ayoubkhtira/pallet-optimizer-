@@ -202,6 +202,8 @@ components.html(header_code, height=200)
 if st.button("🛠️CONFIGURATION"):
     st.session_state.view_mode = 'settings'
     st.rerun()
+if st.button("CONTENEUR"):
+    st.switch_page("app.py")
 
 # --- 7. SECTION KPI (Toutes vos lignes conservées) ---
 col1, col2, col3, col4 = st.columns(4)
@@ -311,5 +313,6 @@ with c2:
 
 with st.expander("🔄 Comparaison des 6 orientations possibles"):
     st.table(df_results[['Orientation', 'Hauteur', 'Total', 'Par Couche', 'Nb Couches', 'Poids (kg)']])
+
 
 
