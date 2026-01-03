@@ -5,8 +5,8 @@ import requests
 import streamlit.components.v1 as components 
 import math
 
-TOKEN = st.secrets["TELEGRAM_TOKEN"]
-CHAT_ID = st.secrets["TELEGRAM_CHAT_ID"]
+TOKEN = st.secrets.get("TELEGRAM_TOKEN", "TON_TOKEN_BOT_TELEGRAM") # Utilisation sécurisée de get pour éviter l'erreur si non configuré en local
+CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID", "")
 
 def send_telegram_feedback(name, message):
     if TOKEN == "TON_TOKEN_BOT_TELEGRAM":
@@ -17,6 +17,7 @@ def send_telegram_feedback(name, message):
         requests.post(url, json={"chat_id": CHAT_ID, "text": text, "parse_mode": "Markdown"})
     except:
         pass
+
 # --- 1. CONFIGURATION DE LA PAGE ---
 st.set_page_config(
     page_title="Pallet Optimizer Pro",
@@ -34,7 +35,7 @@ def local_css():
     st.markdown(
         """
         <style>
-                /* Masquer les éléments natifs */
+        /* Masquer les éléments natifs */
         [data-testid="stSidebarNav"] { display: none !important; }
         button[kind="headerNoPadding"] { display: none !important; }
         [data-testid="stSidebar"] { display: none; } 
@@ -101,7 +102,7 @@ def local_css():
 
 local_css()
 
-# --- 3. SIDEBAR (CONFIGURATION COMPLETE) ---
+# --- 3. SIDEBAR (CONFIGURATION COMPLETE AVEC KEYS) ---
 with st.sidebar:
     st.markdown("### 🧭 Menu Principal")
     if st.button("⬅️ Retour Accueil"):
@@ -110,7 +111,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### ⚙️ Configuration Rapide")
     
-    # AJOUT DES KEYS ICI POUR QUE LA SAUVEGARDE FONCTIONNE
+    # AJOUT DES KEYS ICI (Essentiel pour la synchronisation)
     with st.expander("🏗️ Dimensions Palette", expanded=True):
         pal_L = st.number_input("Longueur Palette (cm)", value=120.0, key="pal_L")
         pal_w = st.number_input("Largeur Palette (cm)", value=80.0, key="pal_w")
@@ -123,7 +124,7 @@ with st.sidebar:
         H = st.number_input("Hauteur Box (cm)", value=25.0, key="H")
         box_poids = st.number_input("Poids Unitaire (kg)", value=15.0, key="box_poids")
 
-# --- 4. MODE PARAMÈTRES PLEINE PAGE ---
+# --- 4. MODE PARAMÈTRES PLEINE PAGE (AVEC LOGIQUE DE TRANSFERT) ---
 if st.session_state.view_mode == 'settings':
     st.markdown("## 🛠️ Configuration Complète du Chargement")
     st.info("Modifiez les paramètres ci-dessous et confirmez pour mettre à jour les graphiques.")
@@ -131,7 +132,7 @@ if st.session_state.view_mode == 'settings':
     col_full1, col_full2 = st.columns(2)
     with col_full1:
         st.subheader("Dimensions du Support")
-        # On utilise les variables définies plus haut comme valeur par défaut
+        # On utilise les variables (qui viennent du state grâce aux keys ci-dessus) comme valeur par défaut
         pal_L = st.number_input("Longueur Palette (cm)", value=pal_L, key="full_pal_L")
         pal_w = st.number_input("Largeur Palette (cm)", value=pal_w, key="full_pal_w")
         pal_H = st.number_input("Hauteur Palette (cm)", value=pal_H, key="full_pal_H")
@@ -146,9 +147,9 @@ if st.session_state.view_mode == 'settings':
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     
-    # LOGIQUE DE SAUVEGARDE AJOUTÉE ICI
+    # LOGIQUE DE MISE À JOUR AJOUTÉE ICI
     if st.button("CONFIRMER ET ACTUALISER LES RÉSULTATS", use_container_width=True):
-        # On transfère les valeurs de l'écran "Full" vers les clés de la Sidebar
+        # On transfère les valeurs 'full_' vers les variables de session principales
         st.session_state.pal_L = st.session_state.full_pal_L
         st.session_state.pal_w = st.session_state.full_pal_w
         st.session_state.pal_H = st.session_state.full_pal_H
@@ -160,7 +161,9 @@ if st.session_state.view_mode == 'settings':
         
         st.session_state.view_mode = 'dashboard'
         st.rerun()
+        
     st.stop() # Pour ne pas afficher le dashboard en même temps
+
 # --- 5. ALGORITHME DE CALCUL (Toutes vos lignes conservées) ---
 orientations = [(L,W,H), (L,H,W), (W,L,H), (W,H,L), (H,L,W), (H,W,L)]
 results = []
@@ -233,6 +236,7 @@ components.html(header_code, height=200)
 if st.button("🛠️CONFIGURATION"):
     st.session_state.view_mode = 'settings'
     st.rerun()
+
 # --- 7. SECTION KPI (Toutes vos lignes conservées) ---
 col1, col2, col3, col4 = st.columns(4)
 kpis = [("Capacité Totale", best['Total'], "Colis"), ("Par Couche", best['Par Couche'], "Colis"), ("Nombre de Couches", best['Nb Couches'], "Niveaux"), ("Poids Estimé", f"{int(best['Poids (kg)'])}", "kg")]
@@ -244,8 +248,6 @@ for col, (label, value, unit) in zip([col1, col2, col3, col4], kpis):
 st.markdown("---")
 
 # --- 8. VISUALISATION ET RAPPORT (Toutes vos lignes conservées) ---
-
-
 c1, c2 = st.columns([1.5, 1], gap="large")
 
 with c1:
@@ -344,6 +346,7 @@ with c2:
     st.info("Utiliser ces dimensions pour calculer le remplissage d'un conteneur.")
     if st.button("Aller au Calculateur Conteneur"):
         st.switch_page("pages/app3.py")
+
 with st.expander("Comparaison des 6 orientations possibles"):
     st.table(df_results[['Orientation', 'Hauteur', 'Total', 'Par Couche', 'Nb Couches', 'Poids (kg)']])
 
@@ -357,14 +360,3 @@ with st.form("feedback_form", clear_on_submit=True):
         if msg:
             send_telegram_feedback(name, msg)
             st.success("✅ Merci ! Votre avis a été envoyé et sera consulté.")
-
-
-
-
-
-
-
-
-
-
-
