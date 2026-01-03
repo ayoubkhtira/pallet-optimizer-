@@ -340,73 +340,84 @@ with col_main:
 # ==========================================
 # 6. PLAN DE CHARGEMENT VISUEL
 # ==========================================
-st.subheader("📐 Plan de chargement (Vue de dessus)")
+st.subheader("📐 Plan de chargement (Vue de dessus réelle)")
 
-grid_cols = res['nx']
 palettes_sol = res['palettes_sol']
 niveaux = res['niveaux']
 
-# Détermination de l'orientation visuelle (Verticale ou Horizontale)
-# Si nx est petit, c'est que les palettes sont mises dans le sens de la largeur
-aspect_ratio = "1.5 / 1" if p_L > p_W else "1 / 1.5"
+# Définition des ratios pour simuler le sens de pose
+# On compare les dimensions pour décider de la forme visuelle
+if p_L >= p_W:
+    width_px = "80px"
+    height_px = "110px"
+    label_dim = f"{p_W}x{p_L}"
+else:
+    width_px = "110px"
+    height_px = "80px"
+    label_dim = f"{p_L}x{p_W}"
 
-# Construction de la chaîne HTML pour les cellules
+# Construction des palettes individuelles
 cells_html = ""
-for i in range(palettes_sol):
+for i in range(int(palettes_sol)):
     cells_html += f"""
     <div style="
-        background: #e67e22; 
-        border: 2px solid #ffffff; 
-        aspect-ratio: {aspect_ratio}; 
-        display: flex; 
+        width: {width_px};
+        height: {height_px};
+        background: #e67e22;
+        border: 2px solid #ffffff;
+        display: flex;
         flex-direction: column;
-        align-items: center; 
-        justify-content: center; 
-        color: white; 
+        align-items: center;
+        justify-content: center;
+        color: white;
         font-family: 'Poppins', sans-serif;
-        border-radius: 4px;
-        box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+        border-radius: 3px;
+        box-shadow: 3px 3px 5px rgba(0,0,0,0.3);
+        flex-shrink: 0;
+        margin: 4px;
     ">
-        <span style="font-size: 9px; opacity: 0.8;">PALETTE</span>
-        <span style="font-size: 13px; font-weight: bold;">x{niveaux}</span>
+        <div style="font-size: 8px; opacity: 0.9;">{label_dim}</div>
+        <div style="font-size: 12px; font-weight: bold;">x{niveaux}</div>
+        <div style="width: 80%; height: 2px; background: rgba(255,255,255,0.3); margin-top: 4px;"></div>
     </div>
     """
 
-# Rendu final dans un seul bloc st.markdown
+# Rendu du conteneur avec Flex-Wrap pour simuler l'organisation réelle
 st.markdown(f"""
 <div style="
-    background: #2c3e50; 
-    padding: 25px; 
-    border-radius: 12px; 
-    border: 5px solid #34495e;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-    width: 100%;
+    background: #ecf0f1;
+    padding: 20px;
+    border-radius: 10px;
+    border: 2px solid #bdc3c7;
+    margin-bottom: 20px;
 ">
     <div style="
-        display: grid; 
-        grid-template-columns: repeat({grid_cols if grid_cols > 0 else 1}, 1fr); 
-        gap: 8px; 
-        width: 100%;
+        background: #2c3e50;
+        padding: 15px;
+        border-radius: 5px;
+        border-left: 15px solid #34495e;
+        border-right: 15px solid #34495e;
+        min-height: 250px;
+        display: flex;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        justify-content: flex-start;
+        box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
     ">
-        {cells_html if palettes_sol > 0 else '<div style="color:white; text-align:center; width:100%; grid-column: 1 / -1; padding: 20px;">Configuration non réalisable</div>'}
+        {cells_html if palettes_sol > 0 else '<div style="color:white; padding:20px;">Aucun chargement possible</div>'}
     </div>
     
     <div style="
-        width: 100%; 
-        height: 12px; 
-        background: #95a5a6; 
-        margin-top: 20px; 
+        width: 100%;
+        height: 15px;
+        background: repeating-linear-gradient(45deg, #e67e22, #e67e22 10px, #d35400 10px, #d35400 20px);
+        margin-top: 10px;
         border-radius: 2px;
         display: flex;
         justify-content: center;
         align-items: center;
-        border-bottom: 3px solid #7f8c8d;
     ">
-        <span style="color: #2c3e50; font-size: 9px; font-weight: bold; letter-spacing: 3px;">PORTES / DOORS</span>
+        <span style="color: white; font-size: 10px; font-weight: bold; text-shadow: 1px 1px 2px black;">ZONE DE CHARGEMENT / DOORS</span>
     </div>
-</div>
-<div style="display: flex; justify-content: space-between; padding: 10px 5px;">
-    <p style="font-size:0.8rem; color:grey; margin:0;">* Longueur conteneur : {cont_L} cm</p>
-    <p style="font-size:0.8rem; color:#e67e22; font-weight:bold; margin:0;">Disposition : {grid_cols} colonnes au sol</p>
 </div>
 """, unsafe_allow_html=True)
