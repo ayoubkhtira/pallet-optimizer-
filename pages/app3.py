@@ -161,15 +161,15 @@ with st.sidebar:
     if st.button("RETOUR PALETTISATION"):
         st.switch_page("app.py")
     
+    st.markdown("### ⚙️ Configuration")
     st.markdown("---")
-    st.subheader("📦 Données de la Palette")
-    
-    p_data = st.session_state.get('pallet_data', {})
-    p_L = st.number_input("Longueur Palette (cm)", value=float(p_data.get('pal_L', 120)))
-    p_W = st.number_input("Largeur Palette (cm)", value=float(p_data.get('pal_w', 80)))
-    p_H = st.number_input("Hauteur avec Box (cm)", value=float(p_data.get('pal_H', 160)))
-    p_weight = st.number_input("Poids par palette (kg)", value=float(p_data.get('weight_per_pal', 500)))
-    b_per_p = st.number_input("Box par Palette", value=int(p_data.get('box_per_pal', 40)))
+    with st.expander("🏗️ Dimensions Palette", expanded=True):
+        p_data = st.session_state.get('pallet_data', {})
+        p_L = st.number_input("Longueur Palette (cm)", value=float(p_data.get('pal_L', 120)))
+        p_W = st.number_input("Largeur Palette (cm)", value=float(p_data.get('pal_w', 80)))
+        p_H = st.number_input("Hauteur avec Box (cm)", value=float(p_data.get('pal_H', 160)))
+        p_weight = st.number_input("Poids par palette (kg)", value=float(p_data.get('weight_per_pal', 500)))
+        b_per_p = st.number_input("Box par Palette", value=int(p_data.get('box_per_pal', 40)))
 
 # ==========================================
 # 5. INTERFACE PRINCIPALE
@@ -207,7 +207,7 @@ header_code = """
         <div id="bg-carousel"></div>
         <div class="overlay"></div>
         <div class="content">
-            <h1>📦 Container Optimizer <span style="color:#e67e22;">Pro</span></h1>
+            <h1> Container Optimizer <span style="color:#e67e22;">Pro</span></h1>
             <div class="status">Logistics Intelligence  <span class="active-dot"></span></div>
         </div>
     </div>
