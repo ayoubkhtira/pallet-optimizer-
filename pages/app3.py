@@ -21,23 +21,23 @@ CONTAINER_TYPES = {
     "Personnaliser...": {"L": 0.0, "W": 0.0, "H": 0.0, "MaxPayload": 0.0, "Vol": 0.0}
 }
 
-# Initialisation de l'état de la sidebar (Fonctionnalité Moderne)
+# Initialisation de l'état pour l'ouverture/fermeture
 if 'sidebar_state' not in st.session_state:
     st.session_state.sidebar_state = 'expanded'
 
 # ==========================================
-# 2. FRONT-END (STYLE ORANGE HARMONISÉ)
+# 2. FRONT-END (STYLE COMPLET SANS RÉDUCTION)
 # ==========================================
 def local_css():
     st.markdown(
         """
         <style>
-        /* FONCTIONNALITÉ MODERNE : Masquer navigation et flèche */
+        /* Masquer la navigation par défaut de Streamlit */
         [data-testid="stSidebarNav"] { display: none !important; }
         button[kind="headerNoPadding"] { display: none !important; }
-        
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
 
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        
         .stApp {
             background-color: #f8f9fa;
             font-family: 'Poppins', sans-serif;
@@ -93,6 +93,13 @@ def local_css():
             border-right: 1px solid #eaeaea;
         }
         
+        /* Correction pour affichage mobile fluide */
+        @media (max-width: 768px) {
+            [data-testid="stSidebar"] {
+                width: 85vw !important;
+            }
+        }
+
         .status-box {
             background: #ffffff;
             border-left: 5px solid #e67e22;
@@ -120,33 +127,9 @@ def local_css():
 
 local_css()
 
-# Logique de fermeture forcée si l'état est 'collapsed'
-# --- LOGIQUE MOBILE ET DESKTOP POUR LA SIDEBAR ---
+# Logique de fermeture forcée
 if st.session_state.sidebar_state == 'collapsed':
-    # On cache totalement
     st.markdown("<style>[data-testid='stSidebar'] { display: none; }</style>", unsafe_allow_html=True)
-else:
-    # On force l'affichage, surtout sur mobile
-    st.markdown(
-        """
-        <style>
-        [data-testid="stSidebar"] {
-            display: block !important;
-            visibility: visible !important;
-            width: 100% !important; /* Prend plus de place sur mobile */
-        }
-        /* Ajustement pour que le contenu ne soit pas écrasé sur petit écran */
-        @media (max-width: 768px) {
-            [data-testid="stSidebar"] {
-                width: 80vw !important; 
-                position: fixed;
-                z-index: 999999;
-            }
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
 
 # ==========================================
 # 3. ALGORITHME DE CALCUL PROFESSIONNEL
@@ -204,7 +187,7 @@ def get_excel_binary(df_res, df_cfg):
     return out.getvalue()
 
 # ==========================================
-# 4. SIDEBAR & NAVIGATION (ORIGINAL COMPLET)
+# 4. SIDEBAR & NAVIGATION (CONTENU ORIGINAL COMPLET)
 # ==========================================
 with st.sidebar:
     st.markdown("""
@@ -246,7 +229,7 @@ with st.sidebar:
         st.markdown(f"**Poids Brut / Palette :** `{total_p_weight} kg`")
 
 # ==========================================
-# 5. INTERFACE PRINCIPALE (HEADER + BOUTON TOGGLE)
+# 5. INTERFACE PRINCIPALE (HEADER HTML + TOGGLE)
 # ==========================================
 header_code = """
 <!DOCTYPE html>
@@ -301,13 +284,11 @@ header_code = """
 """
 components.html(header_code, height=200)
 
-# BOUTON TOGGLE (AJOUT MODERNE)
-col_toggle, _ = st.columns([0.2, 0.8])
-with col_toggle:
-    toggle_label = "FERMER" if st.session_state.sidebar_state == 'expanded' else "🛠️ RÉGLAGES"
-    if st.button(toggle_label):
-        st.session_state.sidebar_state = 'collapsed' if st.session_state.sidebar_state == 'expanded' else 'expanded'
-        st.rerun()
+# BOUTON TOGGLE (AJOUTÉ POUR LE MOBILE)
+btn_label = "⚙️ FERMER LES PARAMÈTRES" if st.session_state.sidebar_state == 'expanded' else "🛠️ OUVRIR LES PARAMÈTRES"
+if st.button(btn_label, use_container_width=True):
+    st.session_state.sidebar_state = 'collapsed' if st.session_state.sidebar_state == 'expanded' else 'expanded'
+    st.rerun()
 
 col_cfg, col_main = st.columns([1, 2.2], gap="large")
 
@@ -365,7 +346,7 @@ with col_main:
         st.markdown(f"""<div style="width: 100%; background-color: #eee; border-radius: 10px; height: 30px; display: flex; overflow: hidden; border: 1px solid #ddd;"><div style="width: {(res['poids_total_box']/total_brut)*100}%; background: #e67e22; height: 100%;"></div><div style="width: {(res['poids_total_supports']/total_brut)*100}%; background: #2c3e50; height: 100%;"></div></div>""", unsafe_allow_html=True)
 
 # ==========================================
-# 6. RAPPORT D'OPTIMISATION PINWHEEL
+# 6. RAPPORT D'OPTIMISATION PINWHEEL (TABLEAU COMPLET)
 # ==========================================
 st.subheader("📐 Optimisation du Chargement Mixte (Pinwheel)")
 
