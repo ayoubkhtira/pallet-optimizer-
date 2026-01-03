@@ -95,7 +95,6 @@ def local_css():
         }
         .weight-info { font-size: 0.75rem; color: #666; font-style: italic; margin-top: -10px; margin-bottom: 10px; }
         
-        /* Style pour le tableau de répartition */
         .recap-table {
             width: 100%;
             border-collapse: collapse;
@@ -120,36 +119,31 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weigh
     if cont_L <= 0 or cont_W <= 0 or cont_H <= 0:
         return {"palettes_sol": 0, "niveaux": 0, "total_palettes": 0, "poids_total_brut": 0, "utilisation_vol": 0, "nx": 1, "ny": 1, "extra_p": 0, "orient": "N/A"}
         
-    # Calcul du poids brut
     weight_of_all_boxes = b_per_p * box_unit_weight
     p_total_gross_weight = weight_of_all_boxes + pallet_support_weight
     
-    # 1. CALCUL DU GERBAGE (H_Conteneur - 5cm de marge de sécurité)
+    # Correction : Gerbage avec marge de 5cm
     stack_levels = int((cont_H - 5) / p_H) if p_H > 0 else 1
-    if stack_levels < 1: stack_levels = 1 
+    if stack_levels < 1: stack_levels = 1
 
-    # 2. CALCUL PINWHEEL (OCCUPATION SOL)
-    # Option Longitudinal
+    # Pinwheel au sol
     nx1, ny1 = int(cont_L / p_L) if p_L > 0 else 0, int(cont_W / p_W) if p_W > 0 else 0
     rem_L1 = cont_L - (nx1 * p_L)
     extra_1 = int(cont_W / p_L) if rem_L1 >= p_W and p_L > 0 else 0
     total_sol_1 = (nx1 * ny1) + extra_1
 
-    # Option Transversal
     nx2, ny2 = int(cont_L / p_W) if p_W > 0 else 0, int(cont_W / p_L) if p_L > 0 else 0
     rem_L2 = cont_L - (nx2 * p_W)
     extra_2 = int(cont_W / p_W) if rem_L2 >= p_L and p_W > 0 else 0
     total_sol_2 = (nx2 * ny2) + extra_2
     
     if total_sol_1 >= total_sol_2:
-        best_sol, fin_nx, fin_ny, fin_extra, fin_orient = total_sol_1, nx1, ny1, extra_1, "Longitudinale"
+        best_sol, f_nx, f_ny, f_extra, f_orient = total_sol_1, nx1, ny1, extra_1, "Longitudinale"
     else:
-        best_sol, fin_nx, fin_ny, fin_extra, fin_orient = total_sol_2, nx2, ny2, extra_2, "Transversale"
+        best_sol, f_nx, f_ny, f_extra, f_orient = total_sol_2, nx2, ny2, extra_2, "Transversale"
     
-    # 3. CALCUL FINAL (Multiplier Sol par les Niveaux)
     theoretical_total = best_sol * stack_levels
     
-    # Limitation par la charge utile
     if p_total_gross_weight > 0 and max_load > 0:
         max_pals_weight = int(max_load / p_total_gross_weight)
         final_palettes = min(theoretical_total, max_pals_weight)
@@ -165,7 +159,7 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weigh
         "poids_total_brut": final_palettes * p_total_gross_weight,
         "poids_total_box": final_palettes * weight_of_all_boxes,
         "poids_total_supports": final_palettes * pallet_support_weight,
-        "utilisation_vol": utilization, "nx": fin_nx, "ny": fin_ny, "extra_p": fin_extra, "orient": fin_orient
+        "utilisation_vol": utilization, "nx": f_nx, "ny": f_ny, "extra_p": f_extra, "orient": f_orient
     }
 
 def get_excel_binary(df_res, df_cfg):
@@ -176,7 +170,7 @@ def get_excel_binary(df_res, df_cfg):
     return out.getvalue()
 
 # ==========================================
-# 4. SIDEBAR & NAVIGATION (ORIGINAL)
+# 4. SIDEBAR & NAVIGATION (ORIGINAL COMPLET)
 # ==========================================
 with st.sidebar:
     st.markdown("""
@@ -218,7 +212,7 @@ with st.sidebar:
         st.markdown(f"**Poids Brut / Palette :** `{total_p_weight} kg`")
 
 # ==========================================
-# 5. INTERFACE PRINCIPALE (HEADER HTML ORIGINAL)
+# 5. INTERFACE PRINCIPALE (HEADER HTML COMPLET)
 # ==========================================
 header_code = """
 <!DOCTYPE html>
@@ -278,24 +272,47 @@ col_cfg, col_main = st.columns([1, 2.2], gap="large")
 with col_cfg:
     st.subheader("🏗️ Type de Conteneur")
     c_choice = st.selectbox("Choisir l'équipement :", list(CONTAINER_TYPES.keys()))
+    
     if c_choice == "Personnaliser...":
+        st.info("Saisissez vos dimensions personnalisées :")
         cont_L = st.number_input("Longueur Int. (cm)", value=1200.0)
         cont_W = st.number_input("Largeur Int. (cm)", value=235.0)
         cont_H = st.number_input("Hauteur Int. (cm)", value=240.0)
         max_payload = st.number_input("Charge Utile Max (kg)", value=28000.0)
-        c_specs = {"L": cont_L, "W": cont_W, "H": cont_H, "MaxPayload": max_payload, "Vol": 0}
+        vol_cust = (cont_L * cont_W * cont_H) / 1000000
+        c_specs = {"L": cont_L, "W": cont_W, "H": cont_H, "MaxPayload": max_payload, "Vol": round(vol_cust, 2)}
     else:
         c_specs = CONTAINER_TYPES[c_choice]
-        cont_L, cont_W, cont_H, max_payload = c_specs['L'], c_specs['W'], c_specs['H'], c_specs['MaxPayload']
+        cont_L, cont_W, cont_H = c_specs['L'], c_specs['W'], c_specs['H']
+        max_payload = c_specs['MaxPayload']
+    
+    st.markdown(f"""
+    <div class="status-box">
+        <b>Spécifications Actuelles :</b><br>
+        • Longueur : {cont_L} cm<br>
+        • Largeur : {cont_W} cm<br>
+        • Hauteur : {cont_H} cm<br>
+        • Charge Max : {max_payload} kg<br>
+        • Volume : {c_specs['Vol']} m³
+    </div>
+    """, unsafe_allow_html=True)
     
     calc_mode = st.radio("Mode d'analyse :", ["Plein potentiel", "Quantité spécifique"])
 
 res = professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, w_box, w_pal, b_per_p, max_payload)
 
 with col_main:
-    display_pals = res['total_palettes']
+    if calc_mode == "Quantité spécifique":
+        target_box = st.number_input("Nombre de Box à charger :", value=500, step=50)
+        needed_pals = math.ceil(target_box / b_per_p) if b_per_p > 0 else 0
+        limit_pal_per_cont = res['total_palettes'] if res['total_palettes'] > 0 else 1
+        needed_conts = math.ceil(needed_pals / limit_pal_per_cont)
+        display_pals, display_box, display_cont = needed_pals, target_box, needed_conts
+    else:
+        display_pals, display_box, display_cont = res['total_palettes'], res['total_palettes'] * b_per_p, 1.0
+
     m1, m2, m3 = st.columns(3)
-    metrics = [("Total Box", int(display_pals * b_per_p)), ("Total Palettes", display_pals), ("Taux Utilisation", f"{res['utilisation_vol']:.1f}%")]
+    metrics = [("Total Box", display_box), ("Total Palettes", display_pals), ("Nombre Conteneurs", display_cont)]
     for col, (lab, val) in zip([m1, m2, m3], metrics):
         col.markdown(f'<div class="metric-container"><p class="metric-label">{lab}</p><p class="metric-value">{val}</p></div>', unsafe_allow_html=True)
 
@@ -306,7 +323,7 @@ with col_main:
         st.markdown(f"""<div style="width: 100%; background-color: #eee; border-radius: 10px; height: 30px; display: flex; overflow: hidden; border: 1px solid #ddd;"><div style="width: {(res['poids_total_box']/total_brut)*100}%; background: #e67e22; height: 100%;"></div><div style="width: {(res['poids_total_supports']/total_brut)*100}%; background: #2c3e50; height: 100%;"></div></div>""", unsafe_allow_html=True)
 
 # ==========================================
-# 6. TABLEAU DE RÉPARTITION PINWHEEL (CORRIGÉ)
+# 6. RAPPORT D'OPTIMISATION PINWHEEL
 # ==========================================
 st.subheader("📐 Optimisation du Chargement Mixte (Pinwheel)")
 
@@ -319,7 +336,7 @@ st.markdown(f"""
             <th>Disposition</th>
             <th>Orientation</th>
             <th>Palettes au sol</th>
-            <th>Gerbage (Multiplicateur)</th>
+            <th>Gerbage (H)</th>
             <th>Total Palettes</th>
         </tr>
     </thead>
@@ -339,18 +356,18 @@ st.markdown(f"""
             <td><b>{res['extra_p'] * res['niveaux']}</b></td>
         </tr>
         <tr style="background:#f8f9fa; border-top: 3px solid #e67e22;">
-            <td colspan="2"><b>CAPACITÉ TOTALE</b></td>
+            <td colspan="2"><b>CAPACITÉ PAR CONTENEUR</b></td>
             <td style="font-weight:bold;">{res['palettes_sol']} (Sol)</td>
-            <td colspan="1">Marge de sécurité incluse (-5cm)</td>
+            <td colspan="1">Marge de sécurité (-5cm)</td>
             <td style="color:#e67e22; font-weight:bold; font-size:1.2rem;">{res['total_palettes']}</td>
         </tr>
     </tbody>
 </table>
 """, unsafe_allow_html=True)
 
-df_res = pd.DataFrame({"Item": ["Palettes", "Poids (kg)"], "Valeur": [display_pals, res['poids_total_brut']]})
+df_res = pd.DataFrame({"Item": ["Palettes", "Poids (kg)", "Conteneurs"], "Valeur": [display_pals, res['poids_total_brut'], display_cont]})
 xl_file = get_excel_binary(df_res, pd.DataFrame([c_specs]))
-st.download_button("📥 TÉLÉCHARGER LE RAPPORT", xl_file, "Export.xlsx")
+st.download_button("📥 TÉLÉCHARGER LE RAPPORT", xl_file, "Export_Logistique.xlsx")
 
 if False:
     st.write("Section neutralisée")
