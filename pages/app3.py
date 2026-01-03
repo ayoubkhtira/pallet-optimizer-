@@ -93,6 +93,7 @@ def local_css():
             margin-top: 10px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
+        .weight-info { font-size: 0.75rem; color: #666; font-style: italic; margin-top: -10px; margin-bottom: 10px; }
         </style>
         """,
         unsafe_allow_html=True
@@ -103,20 +104,21 @@ local_css()
 # ==========================================
 # 3. ALGORITHME DE CALCUL PROFESSIONNEL
 # ==========================================
-def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, p_weight, max_load):
+def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weight, pallet_support_weight, b_per_p, max_load):
     """
-    Algorithme de Bin Packing 2D simplifié pour le sol avec contrainte de poids et gerbage.
+    Algorithme avec distinction Poids des Box et Poids de la Palette (Support)
     """
     if cont_L <= 0 or cont_W <= 0 or cont_H <= 0:
-        return {"palettes_sol": 0, "niveaux": 0, "total_palettes": 0, "poids_total": 0, "utilisation_vol": 0, "nx": 1, "ny": 1}
+        return {"palettes_sol": 0, "niveaux": 0, "total_palettes": 0, "poids_total_brut": 0, "utilisation_vol": 0, "nx": 1, "ny": 1}
         
-    # 1. Analyse des deux orientations possibles au sol
-    nx1 = int(cont_L / p_L) if p_L > 0 else 0
-    ny1 = int(cont_W / p_W) if p_W > 0 else 0
-    total_1 = nx1 * ny1
+    # Calcul du poids brut par unité de chargement
+    weight_of_all_boxes = b_per_p * box_unit_weight
+    p_total_gross_weight = weight_of_all_boxes + pallet_support_weight
     
-    nx2 = int(cont_L / p_W) if p_W > 0 else 0
-    ny2 = int(cont_W / p_L) if p_L > 0 else 0
+    # 1. Analyse des deux orientations possibles au sol
+    nx1, ny1 = int(cont_L / p_L) if p_L > 0 else 0, int(cont_W / p_W) if p_W > 0 else 0
+    total_1 = nx1 * ny1
+    nx2, ny2 = int(cont_L / p_W) if p_W > 0 else 0, int(cont_W / p_L) if p_L > 0 else 0
     total_2 = nx2 * ny2
     
     best_sol = max(total_1, total_2)
@@ -126,8 +128,8 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, p_weight, max_
     
     # 3. Contrainte de Poids (Payload)
     theoretical_total_palettes = best_sol * stack_levels
-    if p_weight > 0 and max_load > 0:
-        max_palettes_by_weight = int(max_load / p_weight)
+    if p_total_gross_weight > 0 and max_load > 0:
+        max_palettes_by_weight = int(max_load / p_total_gross_weight)
         final_palettes = min(theoretical_total_palettes, max_palettes_by_weight)
     else:
         final_palettes = theoretical_total_palettes
@@ -140,7 +142,9 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, p_weight, max_
         "palettes_sol": best_sol,
         "niveaux": stack_levels,
         "total_palettes": final_palettes,
-        "poids_total": final_palettes * p_weight,
+        "poids_total_brut": final_palettes * p_total_gross_weight,
+        "poids_total_box": final_palettes * weight_of_all_boxes,
+        "poids_total_supports": final_palettes * pallet_support_weight,
         "utilisation_vol": utilization,
         "nx": nx1 if total_1 >= total_2 else nx2,
         "ny": ny1 if total_1 >= total_2 else ny2
@@ -154,20 +158,13 @@ def get_excel_binary(df_res, df_cfg):
     return out.getvalue()
 
 # ==========================================
-# ==========================================
 # 4. SIDEBAR & NAVIGATION (MODERNISÉ)
 # ==========================================
 with st.sidebar:
-    # Style spécifique pour le bouton Retour et la Sidebar
     st.markdown("""
         <style>
         .stSidebar [data-testid="stVerticalBlock"] { gap: 0.5rem; }
-        .back-btn-container {
-            padding: 10px 0px;
-            border-bottom: 1px solid #eee;
-            margin-bottom: 15px;
-        }
-        /* Style du bouton Retour pour le différencier des boutons d'action */
+        .back-btn-container { padding: 10px 0px; border-bottom: 1px solid #eee; margin-bottom: 15px; }
         .stSidebar .stButton > button {
             background-color: transparent !important;
             color: #e67e22 !important;
@@ -181,7 +178,6 @@ with st.sidebar:
         </style>
     """, unsafe_allow_html=True)
 
-    # Bouton Retour avec conteneur visuel
     st.markdown('<div class="back-btn-container">', unsafe_allow_html=True)
     if st.button("⬅️ RETOUR PALETTISATION"):
         st.switch_page("app.py")
@@ -189,30 +185,23 @@ with st.sidebar:
     
     st.markdown("### ⚙️ PARAMÈTRES")
     
-    # Utilisation d'un expander stylisé avec icône
-    with st.expander("📦 DIMENSIONS PALETTE", expanded=True):
-        st.markdown('<p style="font-size: 0.8rem; color: #7f8c8d; margin-bottom: 15px;">Ajustez les caractéristiques des unités de charge.</p>', unsafe_allow_html=True)
-        
+    with st.expander("🏗️ DIMENSIONS & QUANTITÉ", expanded=True):
         p_data = st.session_state.get('pallet_data', {})
-        
-        # Organisation des inputs
         p_L = st.number_input("Longueur Palette (cm)", value=float(p_data.get('pal_L', 120)))
         p_W = st.number_input("Largeur Palette (cm)", value=float(p_data.get('pal_w', 80)))
         p_H = st.number_input("Hauteur avec Box (cm)", value=float(p_data.get('pal_H', 160)))
-        
-        st.markdown("---") # Séparation visuelle
-        
-        p_weight = st.number_input("Poids unitaire (kg)", value=float(p_data.get('weight_per_pal', 500)))
-        b_per_p = st.number_input("Box par Palette", value=int(p_data.get('box_per_pal', 40)))
+        b_per_p = st.number_input("Nombre de Box par Palette", value=int(p_data.get('box_per_pal', 40)))
 
-    # Petit rappel informatif en bas de sidebar
-    st.markdown("""
-        <div style="margin-top: 50px; padding: 15px; background: #fdf2e9; border-radius: 10px; border: 1px dashed #e67e22;">
-            <p style="font-size: 0.75rem; color: #d35400; margin: 0;">
-                💡 <b>Astuce :</b> Les dimensions incluent la palette en bois et le débordement éventuel des cartons.
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
+    with st.expander("⚖️ MASSE DES COMPOSANTS", expanded=True):
+        st.markdown('<p style="font-size: 0.85rem; font-weight: 600; color: #e67e22;">Saisie des poids unitaires :</p>', unsafe_allow_html=True)
+        w_box = st.number_input("Poids d'une seule Box (kg)", value=12.5)
+        st.markdown(f'<p class="weight-info">Soit {w_box * b_per_p} kg de box par palette</p>', unsafe_allow_html=True)
+        w_pal = st.number_input("Poids de la Palette support (kg)", value=25.0)
+        st.markdown('<p class="weight-info">Poids du support bois/plastique seul</p>', unsafe_allow_html=True)
+        st.markdown("---")
+        total_p_weight = (w_box * b_per_p) + w_pal
+        st.markdown(f"**Poids Brut / Palette :** `{total_p_weight} kg`")
+
 # ==========================================
 # 5. INTERFACE PRINCIPALE
 # ==========================================
@@ -302,8 +291,8 @@ with col_cfg:
     
     calc_mode = st.radio("Mode d'analyse :", ["Plein potentiel", "Quantité spécifique"])
 
-# Exécution de l'algorithme
-res = professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, p_weight, max_payload)
+# Exécution de l'algorithme mis à jour
+res = professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, w_box, w_pal, b_per_p, max_payload)
 
 with col_main:
     if calc_mode == "Quantité spécifique":
@@ -321,10 +310,28 @@ with col_main:
         col.markdown(f'<div class="metric-container"><p class="metric-label">{lab}</p><p class="metric-value">{val}</p></div>', unsafe_allow_html=True)
 
     st.markdown("---")
+    
+    # Graphique de répartition du poids
+    st.subheader("📊 Répartition de la Charge Utile")
+    total_boxes_w = res['poids_total_box']
+    total_supports_w = res['poids_total_supports']
+    total_load_brut = res['poids_total_brut']
+    if total_load_brut > 0:
+        st.markdown(f"""
+            <div style="width: 100%; background-color: #eee; border-radius: 10px; height: 30px; display: flex; overflow: hidden; margin-top: 15px; border: 1px solid #ddd;">
+                <div style="width: {(total_boxes_w/total_load_brut)*100}%; background: #e67e22; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold;">BOX ({total_boxes_w:,.0f} kg)</div>
+                <div style="width: {(total_supports_w/total_load_brut)*100}%; background: #2c3e50; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold;">PALETTES ({total_supports_w:,.0f} kg)</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.85rem;">
+                <span>📦 Poids total des Box : <b>{total_boxes_w:,.1f} kg</b></span>
+                <span>🏗️ Poids total des Supports : <b>{total_supports_w:,.1f} kg</b></span>
+            </div>
+        """, unsafe_allow_html=True)
+
     st.write(f"**Taux d'utilisation volumétrique : {res['utilisation_vol']:.1f}%**")
     st.progress(min(res['utilisation_vol']/100, 1.0))
     
-    df_res = pd.DataFrame({"Item": ["Palettes total", "Poids total (kg)", "Niveaux de gerbage"], "Valeur": [display_pals, res['poids_total'], res['niveaux']]})
+    df_res = pd.DataFrame({"Item": ["Palettes total", "Poids total Brut (kg)", "Poids Box (kg)", "Niveaux"], "Valeur": [display_pals, res['poids_total_brut'], res['poids_total_box'], res['niveaux']]})
     xl_file = get_excel_binary(df_res, pd.DataFrame([c_specs]))
     st.download_button("📥 TÉLÉCHARGER LE RAPPORT LOGISTIQUE (EXCEL)", xl_file, "Export_Container.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
