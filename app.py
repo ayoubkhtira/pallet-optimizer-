@@ -125,7 +125,7 @@ if st.session_state.view_mode == 'settings':
         box_poids = st.number_input("Poids par Box (kg)", value=box_poids, key="full_poids")
 
     st.markdown("<br><br>", unsafe_allow_html=True)
-    if st.button("✅ CONFIRMER ET ACTUALISER LES RÉSULTATS", use_container_width=True):
+    if st.button("CONFIRMER ET ACTUALISER LES RÉSULTATS", use_container_width=True):
         st.session_state.view_mode = 'dashboard'
         st.rerun()
     st.stop() # Pour ne pas afficher le dashboard en même temps
@@ -199,7 +199,7 @@ header_code = """
 components.html(header_code, height=200)
 
 # Bouton pour passer en mode plein écran
-if st.button("⚙️ OUVRIR LES PARAMÈTRES (PLEINE PAGE)"):
+if st.button("🛠️CONFIGURATION"):
     st.session_state.view_mode = 'settings'
     st.rerun()
 
@@ -311,4 +311,5 @@ with c2:
 
 with st.expander("🔄 Comparaison des 6 orientations possibles"):
     st.table(df_results[['Orientation', 'Hauteur', 'Total', 'Par Couche', 'Nb Couches', 'Poids (kg)']])
+
 
