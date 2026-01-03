@@ -102,52 +102,50 @@ def local_css():
 local_css()
 
 # ==========================================
-# 3. ALGORITHME DE CALCUL PROFESSIONNEL
+# 3. ALGORITHME DE CALCUL PROFESSIONNEL (OPTIMISÉ MIXTE)
 # ==========================================
 def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weight, pallet_support_weight, b_per_p, max_load):
-    """
-    Algorithme avec distinction Poids des Box et Poids de la Palette (Support)
-    """
     if cont_L <= 0 or cont_W <= 0 or cont_H <= 0:
-        return {"palettes_sol": 0, "niveaux": 0, "total_palettes": 0, "poids_total_brut": 0, "utilisation_vol": 0, "nx": 1, "ny": 1}
+        return {"palettes_sol": 0, "niveaux": 0, "total_palettes": 0, "poids_total_brut": 0, "utilisation_vol": 0}
         
-    # Calcul du poids brut par unité de chargement
-    weight_of_all_boxes = b_per_p * box_unit_weight
-    p_total_gross_weight = weight_of_all_boxes + pallet_support_weight
-    
-    # 1. Analyse des deux orientations possibles au sol
-    nx1, ny1 = int(cont_L / p_L) if p_L > 0 else 0, int(cont_W / p_W) if p_W > 0 else 0
-    total_1 = nx1 * ny1
-    nx2, ny2 = int(cont_L / p_W) if p_W > 0 else 0, int(cont_W / p_L) if p_L > 0 else 0
-    total_2 = nx2 * ny2
-    
-    best_sol = max(total_1, total_2)
-    
-    # 2. Analyse du gerbage (Stacking)
+    p_total_weight = (b_per_p * box_unit_weight) + pallet_support_weight
     stack_levels = int(cont_H / p_H) if p_H > 0 else 1
+
+    # --- LOGIQUE DE REMPLISSAGE MIXTE ---
+    # Scénario 1 : Tout en Longueur
+    n1 = int(cont_L / p_L) * int(cont_W / p_W)
+    # Scénario 2 : Tout en Largeur
+    n2 = int(cont_L / p_W) * int(cont_W / p_L)
+    # Scénario 3 : Mixte (Vertical + Horizontal au fond)
+    p_long = max(p_L, p_W)
+    p_short = min(p_L, p_W)
     
-    # 3. Contrainte de Poids (Payload)
-    theoretical_total_palettes = best_sol * stack_levels
-    if p_total_gross_weight > 0 and max_load > 0:
-        max_palettes_by_weight = int(max_load / p_total_gross_weight)
-        final_palettes = min(theoretical_total_palettes, max_palettes_by_weight)
+    rows = int(cont_L / p_long)
+    rest_L = cont_L - (rows * p_long)
+    n3 = (rows * int(cont_W / p_short)) 
+    if rest_L >= p_short:
+        n3 += int(cont_W / p_long)
+
+    best_sol_sol = max(n1, n2, n3)
+    
+    theoretical_total = best_sol_sol * stack_levels
+    if p_total_weight > 0 and max_load > 0:
+        final_palettes = min(theoretical_total, int(max_load / p_total_weight))
     else:
-        final_palettes = theoretical_total_palettes
+        final_palettes = theoretical_total
         
     vol_pal = (p_L * p_W * p_H) * final_palettes
     vol_cont = cont_L * cont_W * cont_H
     utilization = (vol_pal / vol_cont) * 100 if vol_cont > 0 else 0
     
     return {
-        "palettes_sol": best_sol,
+        "palettes_sol": best_sol_sol,
         "niveaux": stack_levels,
         "total_palettes": final_palettes,
-        "poids_total_brut": final_palettes * p_total_gross_weight,
-        "poids_total_box": final_palettes * weight_of_all_boxes,
+        "poids_total_brut": final_palettes * p_total_weight,
+        "poids_total_box": final_palettes * (b_per_p * box_unit_weight),
         "poids_total_supports": final_palettes * pallet_support_weight,
-        "utilisation_vol": utilization,
-        "nx": nx1 if total_1 >= total_2 else nx2,
-        "ny": ny1 if total_1 >= total_2 else ny2
+        "utilisation_vol": utilization
     }
 
 def get_excel_binary(df_res, df_cfg):
@@ -158,7 +156,7 @@ def get_excel_binary(df_res, df_cfg):
     return out.getvalue()
 
 # ==========================================
-# 4. SIDEBAR & NAVIGATION (MODERNISÉ)
+# 4. SIDEBAR & NAVIGATION
 # ==========================================
 with st.sidebar:
     st.markdown("""
@@ -229,8 +227,6 @@ header_code = """
     .content { position: relative; z-index: 2; }
     h1 { font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 5px; font-size: 2.2rem; margin: 0; color: #ffffff; text-shadow: 0 0 15px rgba(230, 126, 34, 0.8); }
     .status { color: #e67e22; font-weight: 700; letter-spacing: 4px; font-size: 0.8rem; text-transform: uppercase; margin-top: 10px; }
-    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-    .active-dot { display: inline-block; width: 10px; height: 10px; background: #fff; border-radius: 50%; margin-left: 10px; animation: blink 1.5s infinite; box-shadow: 0 0 8px #fff; }
 </style>
 </head>
 <body>
@@ -243,10 +239,7 @@ header_code = """
         </div>
     </div>
     <script>
-        const images = [
-            "https://img.freepik.com/photos-premium/entrepot-rempli-beaucoup-palettes-bois-ai-generative_797840-6266.jpg",
-            "https://img.freepik.com/photos-premium/enorme-entrepot-centre-distribution-produits-entrepot-detail-plein-etageres-marchandises-dans-cartons-palettes-chariots-elevateurs-logistique-transport-arriere-plan-flou-format-photo-32_177786-4792.jpg?w=2000"
-        ];
+        const images = ["https://img.freepik.com/photos-premium/entrepot-rempli-beaucoup-palettes-bois-ai-generative_797840-6266.jpg", "https://img.freepik.com/photos-premium/enorme-entrepot-centre-distribution-produits-entrepot-detail-plein-etageres-marchandises-dans-cartons-palettes-chariots-elevateurs-logistique-transport-arriere-plan-flou-format-photo-32_177786-4792.jpg?w=2000"];
         let index = 0;
         const bgDiv = document.getElementById('bg-carousel');
         function changeBackground() {
@@ -268,39 +261,25 @@ with col_cfg:
     c_choice = st.selectbox("Choisir l'équipement :", list(CONTAINER_TYPES.keys()))
     
     if c_choice == "Personnaliser...":
-        st.info("Saisissez vos dimensions personnalisées :")
         cont_L = st.number_input("Longueur Int. (cm)", value=1200.0)
         cont_W = st.number_input("Largeur Int. (cm)", value=235.0)
         cont_H = st.number_input("Hauteur Int. (cm)", value=240.0)
         max_payload = st.number_input("Charge Utile Max (kg)", value=28000.0)
-        vol_cust = (cont_L * cont_W * cont_H) / 1000000
-        c_specs = {"L": cont_L, "W": cont_W, "H": cont_H, "MaxPayload": max_payload, "Vol": round(vol_cust, 2)}
+        c_specs = {"L": cont_L, "W": cont_W, "H": cont_H, "MaxPayload": max_payload, "Vol": round((cont_L*cont_W*cont_H)/1000000, 2)}
     else:
         c_specs = CONTAINER_TYPES[c_choice]
-        cont_L, cont_W, cont_H = c_specs['L'], c_specs['W'], c_specs['H']
-        max_payload = c_specs['MaxPayload']
+        cont_L, cont_W, cont_H, max_payload = c_specs['L'], c_specs['W'], c_specs['H'], c_specs['MaxPayload']
     
-    st.markdown(f"""
-    <div class="status-box">
-        <b>Spécifications Actuelles :</b><br>
-        • Longueur : {cont_L} cm<br>
-        • Charge Max : {max_payload} kg<br>
-        • Volume : {c_specs['Vol']} m³
-    </div>
-    """, unsafe_allow_html=True)
-    
+    st.markdown(f"""<div class="status-box"><b>Spécifications :</b><br>• Longueur : {cont_L} cm<br>• Charge : {max_payload} kg<br>• Volume : {c_specs['Vol']} m³</div>""", unsafe_allow_html=True)
     calc_mode = st.radio("Mode d'analyse :", ["Plein potentiel", "Quantité spécifique"])
 
-# Exécution de l'algorithme mis à jour
 res = professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, w_box, w_pal, b_per_p, max_payload)
 
 with col_main:
     if calc_mode == "Quantité spécifique":
         target_box = st.number_input("Nombre de Box à charger :", value=500, step=50)
-        needed_pals = math.ceil(target_box / b_per_p) if b_per_p > 0 else 0
-        limit_pal = res['total_palettes'] if res['total_palettes'] > 0 else 1
-        needed_conts = math.ceil(needed_pals / limit_pal)
-        display_pals, display_box, display_cont = needed_pals, target_box, needed_conts
+        display_pals = math.ceil(target_box / b_per_p)
+        display_box, display_cont = target_box, math.ceil(display_pals / (res['total_palettes'] if res['total_palettes']>0 else 1))
     else:
         display_pals, display_box, display_cont = res['total_palettes'], res['total_palettes'] * b_per_p, 1.0
 
@@ -310,114 +289,58 @@ with col_main:
         col.markdown(f'<div class="metric-container"><p class="metric-label">{lab}</p><p class="metric-value">{val}</p></div>', unsafe_allow_html=True)
 
     st.markdown("---")
-    
-    # Graphique de répartition du poids
     st.subheader("📊 Répartition de la Charge Utile")
-    total_boxes_w = res['poids_total_box']
-    total_supports_w = res['poids_total_supports']
-    total_load_brut = res['poids_total_brut']
+    total_boxes_w, total_supports_w, total_load_brut = res['poids_total_box'], res['poids_total_supports'], res['poids_total_brut']
     if total_load_brut > 0:
         st.markdown(f"""
             <div style="width: 100%; background-color: #eee; border-radius: 10px; height: 30px; display: flex; overflow: hidden; margin-top: 15px; border: 1px solid #ddd;">
-                <div style="width: {(total_boxes_w/total_load_brut)*100}%; background: #e67e22; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold;">BOX ({total_boxes_w:,.0f} kg)</div>
-                <div style="width: {(total_supports_w/total_load_brut)*100}%; background: #2c3e50; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold;">PALETTES ({total_supports_w:,.0f} kg)</div>
+                <div style="width: {(total_boxes_w/total_load_brut)*100}%; background: #e67e22; height: 100%;"></div>
+                <div style="width: {(total_supports_w/total_load_brut)*100}%; background: #2c3e50; height: 100%;"></div>
             </div>
             <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.85rem;">
-                <span>📦 Poids total des Box : <b>{total_boxes_w:,.1f} kg</b></span>
-                <span>🏗️ Poids total des Supports : <b>{total_supports_w:,.1f} kg</b></span>
+                <span>📦 Poids Box : <b>{total_boxes_w:,.1f} kg</b></span>
+                <span>🏗️ Poids Supports : <b>{total_supports_w:,.1f} kg</b></span>
             </div>
         """, unsafe_allow_html=True)
 
     st.write(f"**Taux d'utilisation volumétrique : {res['utilisation_vol']:.1f}%**")
     st.progress(min(res['utilisation_vol']/100, 1.0))
     
-    df_res = pd.DataFrame({"Item": ["Palettes total", "Poids total Brut (kg)", "Poids Box (kg)", "Niveaux"], "Valeur": [display_pals, res['poids_total_brut'], res['poids_total_box'], res['niveaux']]})
-    xl_file = get_excel_binary(df_res, pd.DataFrame([c_specs]))
-    st.download_button("📥 TÉLÉCHARGER LE RAPPORT LOGISTIQUE (EXCEL)", xl_file, "Export_Container.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
-
+    df_res = pd.DataFrame({"Item": ["Palettes total", "Poids Brut (kg)", "Niveaux"], "Valeur": [display_pals, res['poids_total_brut'], res['niveaux']]})
+    st.download_button("📥 TÉLÉCHARGER LE RAPPORT (EXCEL)", get_excel_binary(df_res, pd.DataFrame([c_specs])), "Export_Logistics.xlsx")
 
 # ==========================================
-# 6. PLAN DE CHARGEMENT VISUEL
+# 6. PLAN DE CHARGEMENT RÉALISTE (MIXTE)
 # ==========================================
-st.subheader("📐 Plan de chargement (Vue de dessus réelle)")
+st.subheader("📐 Plan de chargement (Vue de dessus optimisée)")
+
+
 
 palettes_sol = res['palettes_sol']
 niveaux = res['niveaux']
 
-# Définition des ratios pour simuler le sens de pose
-# On compare les dimensions pour décider de la forme visuelle
+# Logique visuelle : Détermine si on affiche les palettes en portrait ou paysage
 if p_L >= p_W:
-    width_px = "80px"
-    height_px = "110px"
-    label_dim = f"{p_W}x{p_L}"
+    w_px, h_px, label_dim = "85px", "115px", f"{p_W}x{p_L}"
 else:
-    width_px = "110px"
-    height_px = "80px"
-    label_dim = f"{p_L}x{p_W}"
+    w_px, h_px, label_dim = "115px", "85px", f"{p_L}x{p_W}"
 
-# Construction des palettes individuelles
 cells_html = ""
 for i in range(int(palettes_sol)):
     cells_html += f"""
-    <div style="
-        width: {width_px};
-        height: {height_px};
-        background: #e67e22;
-        border: 2px solid #ffffff;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-family: 'Poppins', sans-serif;
-        border-radius: 3px;
-        box-shadow: 3px 3px 5px rgba(0,0,0,0.3);
-        flex-shrink: 0;
-        margin: 4px;
-    ">
+    <div style="width: {w_px}; height: {h_px}; background: #e67e22; border: 2px solid #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: 'Poppins', sans-serif; border-radius: 3px; box-shadow: 3px 3px 5px rgba(0,0,0,0.3); flex-shrink: 0; margin: 5px;">
         <div style="font-size: 8px; opacity: 0.9;">{label_dim}</div>
-        <div style="font-size: 12px; font-weight: bold;">x{niveaux}</div>
-        <div style="width: 80%; height: 2px; background: rgba(255,255,255,0.3); margin-top: 4px;"></div>
-    </div>
-    """
+        <div style="font-size: 13px; font-weight: bold;">x{niveaux}</div>
+        <div style="width: 70%; height: 1.5px; background: rgba(255,255,255,0.4); margin-top: 4px;"></div>
+    </div>"""
 
-# Rendu du conteneur avec Flex-Wrap pour simuler l'organisation réelle
 st.markdown(f"""
-<div style="
-    background: #ecf0f1;
-    padding: 20px;
-    border-radius: 10px;
-    border: 2px solid #bdc3c7;
-    margin-bottom: 20px;
-">
-    <div style="
-        background: #2c3e50;
-        padding: 15px;
-        border-radius: 5px;
-        border-left: 15px solid #34495e;
-        border-right: 15px solid #34495e;
-        min-height: 250px;
-        display: flex;
-        flex-wrap: wrap;
-        align-content: flex-start;
-        justify-content: flex-start;
-        box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
-    ">
-        {cells_html if palettes_sol > 0 else '<div style="color:white; padding:20px;">Aucun chargement possible</div>'}
+<div style="background: #ecf0f1; padding: 20px; border-radius: 12px; border: 2px solid #bdc3c7;">
+    <div style="background: #2c3e50; padding: 20px; border-radius: 5px; border-left: 15px solid #34495e; border-right: 15px solid #34495e; min-height: 280px; display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: center; box-shadow: inset 0 0 50px rgba(0,0,0,0.6);">
+        {cells_html if palettes_sol > 0 else '<div style="color:white; padding:40px;">⚠️ Espace insuffisant pour ces dimensions</div>'}
     </div>
-    
-    <div style="
-        width: 100%;
-        height: 15px;
-        background: repeating-linear-gradient(45deg, #e67e22, #e67e22 10px, #d35400 10px, #d35400 20px);
-        margin-top: 10px;
-        border-radius: 2px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    ">
-        <span style="color: white; font-size: 10px; font-weight: bold; text-shadow: 1px 1px 2px black;">ZONE DE CHARGEMENT / DOORS</span>
+    <div style="width: 100%; height: 20px; background: repeating-linear-gradient(45deg, #e67e22, #e67e22 10px, #d35400 10px, #d35400 20px); margin-top: 15px; border-radius: 4px; display: flex; justify-content: center; align-items: center;">
+        <span style="color: white; font-size: 11px; font-weight: bold; text-shadow: 1px 1px 2px black;">ZONE DE CHARGEMENT / SENS DES PORTES</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
