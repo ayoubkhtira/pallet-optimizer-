@@ -110,17 +110,18 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### ⚙️ Configuration Rapide")
     
+    # AJOUT DES KEYS ICI POUR QUE LA SAUVEGARDE FONCTIONNE
     with st.expander("🏗️ Dimensions Palette", expanded=True):
-        pal_L = st.number_input("Longueur Palette (cm)", value=120.0)
-        pal_w = st.number_input("Largeur Palette (cm)", value=80.0)
-        pal_H = st.number_input("Hauteur Max (cm)", value=200.0)
-        pal_p_max = st.number_input("Poids Max (kg)", value=1000.0)
+        pal_L = st.number_input("Longueur Palette (cm)", value=120.0, key="pal_L")
+        pal_w = st.number_input("Largeur Palette (cm)", value=80.0, key="pal_w")
+        pal_H = st.number_input("Hauteur Max (cm)", value=200.0, key="pal_H")
+        pal_p_max = st.number_input("Poids Max (kg)", value=1000.0, key="pal_p_max")
 
     with st.expander("📦 Dimensions Box", expanded=True):
-        L = st.number_input("Longueur Box (cm)", value=45.0)
-        W = st.number_input("Largeur Box (cm)", value=35.0)
-        H = st.number_input("Hauteur Box (cm)", value=25.0)
-        box_poids = st.number_input("Poids Unitaire (kg)", value=15.0)
+        L = st.number_input("Longueur Box (cm)", value=45.0, key="L")
+        W = st.number_input("Largeur Box (cm)", value=35.0, key="W")
+        H = st.number_input("Hauteur Box (cm)", value=25.0, key="H")
+        box_poids = st.number_input("Poids Unitaire (kg)", value=15.0, key="box_poids")
 
 # --- 4. MODE PARAMÈTRES PLEINE PAGE ---
 if st.session_state.view_mode == 'settings':
@@ -130,6 +131,7 @@ if st.session_state.view_mode == 'settings':
     col_full1, col_full2 = st.columns(2)
     with col_full1:
         st.subheader("Dimensions du Support")
+        # On utilise les variables définies plus haut comme valeur par défaut
         pal_L = st.number_input("Longueur Palette (cm)", value=pal_L, key="full_pal_L")
         pal_w = st.number_input("Largeur Palette (cm)", value=pal_w, key="full_pal_w")
         pal_H = st.number_input("Hauteur Palette (cm)", value=pal_H, key="full_pal_H")
@@ -143,11 +145,22 @@ if st.session_state.view_mode == 'settings':
         box_poids = st.number_input("Poids par Box (kg)", value=box_poids, key="full_poids")
 
     st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    # LOGIQUE DE SAUVEGARDE AJOUTÉE ICI
     if st.button("CONFIRMER ET ACTUALISER LES RÉSULTATS", use_container_width=True):
+        # On transfère les valeurs de l'écran "Full" vers les clés de la Sidebar
+        st.session_state.pal_L = st.session_state.full_pal_L
+        st.session_state.pal_w = st.session_state.full_pal_w
+        st.session_state.pal_H = st.session_state.full_pal_H
+        st.session_state.pal_p_max = st.session_state.full_pal_p
+        st.session_state.L = st.session_state.full_L
+        st.session_state.W = st.session_state.full_W
+        st.session_state.H = st.session_state.full_H
+        st.session_state.box_poids = st.session_state.full_poids
+        
         st.session_state.view_mode = 'dashboard'
         st.rerun()
     st.stop() # Pour ne pas afficher le dashboard en même temps
-
 # --- 5. ALGORITHME DE CALCUL (Toutes vos lignes conservées) ---
 orientations = [(L,W,H), (L,H,W), (W,L,H), (W,H,L), (H,L,W), (H,W,L)]
 results = []
@@ -344,6 +357,7 @@ with st.form("feedback_form", clear_on_submit=True):
         if msg:
             send_telegram_feedback(name, msg)
             st.success("✅ Merci ! Votre avis a été envoyé et sera consulté.")
+
 
 
 
