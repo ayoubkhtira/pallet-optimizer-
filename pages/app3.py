@@ -213,7 +213,7 @@ else:
         if st.button("RETOUR"):
             st.switch_page("app.py")
     with col_nav2:
-        if st.button("⚙️CONFIGURATION"):
+        if st.button("CONFIGURATION"):
             st.session_state.view_mode = 'settings'
             st.rerun()
 
