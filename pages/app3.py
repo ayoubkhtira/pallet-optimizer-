@@ -280,7 +280,7 @@ components.html(header_code, height=200)
 # BOUTON TOGGLE (AJOUT MODERNE)
 col_toggle, _ = st.columns([0.2, 0.8])
 with col_toggle:
-    toggle_label = "⚙️ RÉGLAGES" if st.session_state.sidebar_state == 'expanded' else "🛠️ RÉGLAGES"
+    toggle_label = "FERMER" if st.session_state.sidebar_state == 'expanded' else "🛠️ RÉGLAGES"
     if st.button(toggle_label):
         st.session_state.sidebar_state = 'collapsed' if st.session_state.sidebar_state == 'expanded' else 'expanded'
         st.rerun()
