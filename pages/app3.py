@@ -122,30 +122,26 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weigh
     weight_of_all_boxes = b_per_p * box_unit_weight
     p_total_gross_weight = weight_of_all_boxes + pallet_support_weight
     
-    # 1. Orientation 1: Longitudinal pur
+    # 1. Orientation Longitudinal pur
     nx1, ny1 = int(cont_L / p_L) if p_L > 0 else 0, int(cont_W / p_W) if p_W > 0 else 0
     total_1 = nx1 * ny1
     
-    # 2. Orientation 2: Transversal pur
+    # 2. Orientation Transversal pur
     nx2, ny2 = int(cont_L / p_W) if p_W > 0 else 0, int(cont_W / p_L) if p_L > 0 else 0
     total_2 = nx2 * ny2
     
-    # 3. Orientation 3: MIXTE (Pinwheel/Optimisé)
-    # On remplit le max en longitudinal, puis on voit si le reste de la largeur permet de mettre des transversales
-    # Exemple : remplir une partie du conteneur dans un sens et le fond/côté dans l'autre
-    nx_mix = int(cont_L / p_L)
-    ny_mix = int(cont_W / p_W)
-    total_main = nx_mix * ny_mix
-    
-    # Calcul de l'espace restant en longueur
+    # 3. Orientation MIXTE (Calcul de l'espace résiduel en fond de conteneur)
+    # On privilégie le sens longitudinal pour le corps, et on teste le transversal au fond
+    nx_mix = nx1
+    ny_mix = ny1
     rem_L = cont_L - (nx_mix * p_L)
     extra_by_L = 0
-    if rem_L >= p_W:
-        extra_by_L = int(cont_W / p_L) # Combien de palettes tournées tiennent dans le fond
-        
-    total_mix = total_main + extra_by_L
+    if rem_L >= p_W: # Si on peut tourner les palettes au fond
+        extra_by_L = int(cont_W / p_L)
     
-    # Sélection du meilleur résultat
+    total_mix = (nx_mix * ny_mix) + extra_by_L
+    
+    # Choix de la meilleure option
     best_sol = max(total_1, total_2, total_mix)
     
     stack_levels = int(cont_H / p_H) if p_H > 0 else 1
@@ -161,6 +157,19 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weigh
     vol_cont = cont_L * cont_W * cont_H
     utilization = (vol_pal / vol_cont) * 100 if vol_cont > 0 else 0
     
+    # Détermination des paramètres d'affichage selon le gagnant
+    if best_sol == total_mix and total_mix > max(total_1, total_2):
+        nx_final, ny_final = nx_mix, ny_mix
+        is_mixed = True
+    elif best_sol == total_2:
+        nx_final, ny_final = nx2, ny2
+        extra_by_L = 0
+        is_mixed = False
+    else:
+        nx_final, ny_final = nx1, ny1
+        extra_by_L = 0
+        is_mixed = False
+
     return {
         "palettes_sol": best_sol,
         "niveaux": stack_levels,
@@ -169,9 +178,10 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weigh
         "poids_total_box": final_palettes * weight_of_all_boxes,
         "poids_total_supports": final_palettes * pallet_support_weight,
         "utilisation_vol": utilization,
-        "nx": nx1 if best_sol == total_1 else (nx2 if best_sol == total_2 else nx_mix),
-        "ny": ny1 if best_sol == total_1 else (ny2 if best_sol == total_2 else ny_mix),
-        "extra_mix": extra_by_L if best_sol == total_mix else 0
+        "nx": nx_final,
+        "ny": ny_final,
+        "extra_mix": extra_by_L,
+        "is_mixed": is_mixed
     }
 
 def get_excel_binary(df_res, df_cfg):
@@ -207,7 +217,7 @@ with st.sidebar:
 # ==========================================
 header_code = """<div style="background:#0a0a0a; padding:20px; border-radius:10px; border-left:10px solid #e67e22; color:white; font-family:sans-serif;">
     <h1 style="color:white; margin:0;">Container Optimizer Pro</h1>
-    <p style="color:#e67e22; margin:0; font-weight:bold;">MIXED LOADING ALGORITHM ACTIVE</p>
+    <p style="color:#e67e22; margin:0; font-weight:bold;">ALGORITHME DE CHARGEMENT MIXTE ACTIVÉ</p>
 </div>"""
 st.markdown(header_code, unsafe_allow_html=True)
 
@@ -235,40 +245,42 @@ with col_main:
 # ==========================================
 st.subheader("📊 Plan de Répartition Mixte")
 
-
-
 st.markdown(f"""
 <table class="recap-table">
     <thead>
         <tr>
-            <th>Type de Rangée</th>
+            <th>Zone du Conteneur</th>
             <th>Orientation</th>
-            <th>Configuration</th>
+            <th>Détails des rangées</th>
             <th>Palettes au sol</th>
         </tr>
     </thead>
     <tbody>
         <tr>
-            <td><b>Section Principale</b></td>
-            <td>Longitudinale</td>
+            <td><b>Corps Principal</b></td>
+            <td>{'Longitudinale' if not res['is_mixed'] and p_L >= p_W else 'Mixte/Optimisée'}</td>
             <td>{res['nx']} rangées x {res['ny']} col.</td>
             <td>{res['palettes_sol'] - res['extra_mix']}</td>
         </tr>
         <tr>
-            <td><b>Section Optimisation</b></td>
-            <td>Transversale (Fond)</td>
-            <td>Remplissage espace vide</td>
+            <td><b>Zone d'Optimisation (Fond)</b></td>
+            <td>Transversale</td>
+            <td>Espace résiduel utilisé</td>
             <td>{res['extra_mix']}</td>
         </tr>
         <tr style="background:#f8f9fa; font-weight:bold;">
-            <td colspan="3">CAPACITÉ TOTALE AU SOL</td>
-            <td style="color:#e67e22;">{res['palettes_sol']} palettes</td>
+            <td colspan="3">TOTAL PALETTES AU SOL</td>
+            <td style="color:#e67e22;">{res['palettes_sol']}</td>
+        </tr>
+        <tr style="background:#eee; font-weight:bold;">
+            <td colspan="3">CAPACITÉ TOTALE (AVEC GERBAGE)</td>
+            <td style="color:#2c3e50;">{res['total_palettes']}</td>
         </tr>
     </tbody>
 </table>
 """, unsafe_allow_html=True)
 
-st.info(f"💡 Le gerbage sur **{res['niveaux']} niveau(x)** permet d'atteindre un total de **{res['total_palettes']} palettes**.")
+st.info(f"💡 Le plan mixte utilise {res['extra_mix']} palette(s) tournée(s) pour optimiser les derniers centimètres du conteneur.")
 
 if False: # Garder le bloc intact comme demandé
     st.subheader("📐 Plan de chargement")
