@@ -21,6 +21,9 @@ CONTAINER_TYPES = {
     "Personnaliser...": {"L": 0.0, "W": 0.0, "H": 0.0, "MaxPayload": 0.0, "Vol": 0.0}
 }
 
+# Initialisation de l'état de la sidebar (Fonctionnalité Moderne)
+if 'sidebar_state' not in st.session_state:
+    st.session_state.sidebar_state = 'expanded'
 
 # ==========================================
 # 2. FRONT-END (STYLE ORANGE HARMONISÉ)
@@ -29,23 +32,11 @@ def local_css():
     st.markdown(
         """
         <style>
-        /* 1. Masquer la navigation et la flèche standard */
+        /* FONCTIONNALITÉ MODERNE : Masquer navigation et flèche */
         [data-testid="stSidebarNav"] { display: none !important; }
         button[kind="headerNoPadding"] { display: none !important; }
-
-        /* 2. Logique pour masquer/afficher la sidebar selon l'état du bouton */
-        if st.session_state.get('sidebar_state') == 'collapsed':
-            st.markdown(
-                "<style>[data-testid='stSidebar'] { display: none; }</style>",
-                unsafe_allow_html=True
-            )
-2. Le bouton "Toggle" (L'icône de configuration)
-
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
         
-        .stApp {
-            background-color: #f8f9fa;
-...
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
 
         .stApp {
             background-color: #f8f9fa;
@@ -129,6 +120,10 @@ def local_css():
 
 local_css()
 
+# Logique de fermeture forcée si l'état est 'collapsed'
+if st.session_state.sidebar_state == 'collapsed':
+    st.markdown("<style>[data-testid='stSidebar'] { display: none; }</style>", unsafe_allow_html=True)
+
 # ==========================================
 # 3. ALGORITHME DE CALCUL PROFESSIONNEL
 # ==========================================
@@ -139,11 +134,9 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weigh
     weight_of_all_boxes = b_per_p * box_unit_weight
     p_total_gross_weight = weight_of_all_boxes + pallet_support_weight
     
-    # Correction : Gerbage avec marge de 5cm
     stack_levels = int((cont_H - 5) / p_H) if p_H > 0 else 1
     if stack_levels < 1: stack_levels = 1
 
-    # Pinwheel au sol
     nx1, ny1 = int(cont_L / p_L) if p_L > 0 else 0, int(cont_W / p_W) if p_W > 0 else 0
     rem_L1 = cont_L - (nx1 * p_L)
     extra_1 = int(cont_W / p_L) if rem_L1 >= p_W and p_L > 0 else 0
@@ -229,7 +222,7 @@ with st.sidebar:
         st.markdown(f"**Poids Brut / Palette :** `{total_p_weight} kg`")
 
 # ==========================================
-# 5. INTERFACE PRINCIPALE (HEADER HTML COMPLET)
+# 5. INTERFACE PRINCIPALE (HEADER + BOUTON TOGGLE)
 # ==========================================
 header_code = """
 <!DOCTYPE html>
@@ -283,6 +276,14 @@ header_code = """
 </html>
 """
 components.html(header_code, height=200)
+
+# BOUTON TOGGLE (AJOUT MODERNE)
+col_toggle, _ = st.columns([0.2, 0.8])
+with col_toggle:
+    toggle_label = "⚙️ FERMER RÉGLAGES" if st.session_state.sidebar_state == 'expanded' else "🛠️ OUVRIR RÉGLAGES"
+    if st.button(toggle_label):
+        st.session_state.sidebar_state = 'collapsed' if st.session_state.sidebar_state == 'expanded' else 'expanded'
+        st.rerun()
 
 col_cfg, col_main = st.columns([1, 2.2], gap="large")
 
