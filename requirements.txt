@@ -12,3 +12,4 @@ numpy>=1.24.0
 
 # Gestion des requêtes si vous ajoutez des APIs plus tard
 requests>=2.31.0
+
