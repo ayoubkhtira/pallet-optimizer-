@@ -154,23 +154,65 @@ def get_excel_binary(df_res, df_cfg):
     return out.getvalue()
 
 # ==========================================
-# 4. SIDEBAR & NAVIGATION
+# ==========================================
+# 4. SIDEBAR & NAVIGATION (MODERNISÉ)
 # ==========================================
 with st.sidebar:
+    # Style spécifique pour le bouton Retour et la Sidebar
+    st.markdown("""
+        <style>
+        .stSidebar [data-testid="stVerticalBlock"] { gap: 0.5rem; }
+        .back-btn-container {
+            padding: 10px 0px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 15px;
+        }
+        /* Style du bouton Retour pour le différencier des boutons d'action */
+        .stSidebar .stButton > button {
+            background-color: transparent !important;
+            color: #e67e22 !important;
+            border: 2px solid #e67e22 !important;
+            transition: all 0.3s ease !important;
+        }
+        .stSidebar .stButton > button:hover {
+            background-color: #e67e22 !important;
+            color: white !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
-    if st.button("RETOUR PALETTISATION"):
+    # Bouton Retour avec conteneur visuel
+    st.markdown('<div class="back-btn-container">', unsafe_allow_html=True)
+    if st.button("⬅️ RETOUR PALETTISATION"):
         st.switch_page("app.py")
+    st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown("### ⚙️ Configuration")
-    st.markdown("---")
-    with st.expander("🏗️ Dimensions Palette", expanded=True):
+    st.markdown("### ⚙️ PARAMÈTRES")
+    
+    # Utilisation d'un expander stylisé avec icône
+    with st.expander("📦 DIMENSIONS PALETTE", expanded=True):
+        st.markdown('<p style="font-size: 0.8rem; color: #7f8c8d; margin-bottom: 15px;">Ajustez les caractéristiques des unités de charge.</p>', unsafe_allow_html=True)
+        
         p_data = st.session_state.get('pallet_data', {})
+        
+        # Organisation des inputs
         p_L = st.number_input("Longueur Palette (cm)", value=float(p_data.get('pal_L', 120)))
         p_W = st.number_input("Largeur Palette (cm)", value=float(p_data.get('pal_w', 80)))
         p_H = st.number_input("Hauteur avec Box (cm)", value=float(p_data.get('pal_H', 160)))
-        p_weight = st.number_input("Poids par palette (kg)", value=float(p_data.get('weight_per_pal', 500)))
+        
+        st.markdown("---") # Séparation visuelle
+        
+        p_weight = st.number_input("Poids unitaire (kg)", value=float(p_data.get('weight_per_pal', 500)))
         b_per_p = st.number_input("Box par Palette", value=int(p_data.get('box_per_pal', 40)))
 
+    # Petit rappel informatif en bas de sidebar
+    st.markdown("""
+        <div style="margin-top: 50px; padding: 15px; background: #fdf2e9; border-radius: 10px; border: 1px dashed #e67e22;">
+            <p style="font-size: 0.75rem; color: #d35400; margin: 0;">
+                💡 <b>Astuce :</b> Les dimensions incluent la palette en bois et le débordement éventuel des cartons.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
 # ==========================================
 # 5. INTERFACE PRINCIPALE
 # ==========================================
