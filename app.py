@@ -5,12 +5,12 @@ import requests
 import streamlit.components.v1 as components 
 import math
 
-TOKEN = st.secrets.get("TELEGRAM_TOKEN", "TON_TOKEN_BOT_TELEGRAM") # Utilisation sécurisée de get pour éviter l'erreur si non configuré en local
+TOKEN = st.secrets.get("TELEGRAM_TOKEN", "TON_TOKEN_BOT_TELEGRAM") 
 CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID", "")
 
 def send_telegram_feedback(name, message):
     if TOKEN == "TON_TOKEN_BOT_TELEGRAM":
-        return # Ne rien faire si pas configuré
+        return 
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     text = f"🚀 *Nouvel avis sur l'app VAM*\n\n*Nom:* {name}\n*Message:* {message}"
     try:
@@ -30,7 +30,7 @@ st.set_page_config(
 if 'view_mode' not in st.session_state:
     st.session_state.view_mode = 'dashboard'
 
-# --- 2. FRONT-END STYLE (Toutes vos lignes conservées) ---
+# --- 2. FRONT-END STYLE ---
 def local_css():
     st.markdown(
         """
@@ -106,12 +106,12 @@ local_css()
 with st.sidebar:
     st.markdown("### 🧭 Menu Principal")
     if st.button("⬅️ Retour Accueil"):
-        st.write("Navigation vers accueil...") # Logique de retour
+        st.write("Navigation vers accueil...") 
     
     st.markdown("---")
     st.markdown("### ⚙️ Configuration Rapide")
     
-    # AJOUT DES KEYS ICI (Essentiel pour la synchronisation)
+    # On utilise key="..." pour lier ces champs au session_state
     with st.expander("🏗️ Dimensions Palette", expanded=True):
         pal_L = st.number_input("Longueur Palette (cm)", value=120.0, key="pal_L")
         pal_w = st.number_input("Largeur Palette (cm)", value=80.0, key="pal_w")
@@ -124,32 +124,32 @@ with st.sidebar:
         H = st.number_input("Hauteur Box (cm)", value=25.0, key="H")
         box_poids = st.number_input("Poids Unitaire (kg)", value=15.0, key="box_poids")
 
-# --- 4. MODE PARAMÈTRES PLEINE PAGE (AVEC LOGIQUE DE TRANSFERT) ---
+# --- 4. MODE PARAMÈTRES PLEINE PAGE (CORRECTION CALLBACK) ---
 if st.session_state.view_mode == 'settings':
     st.markdown("## 🛠️ Configuration Complète du Chargement")
     st.info("Modifiez les paramètres ci-dessous et confirmez pour mettre à jour les graphiques.")
     
     col_full1, col_full2 = st.columns(2)
+    # Ici on affiche les champs. Les valeurs par défaut viennent des variables actuelles (sidebar)
     with col_full1:
         st.subheader("Dimensions du Support")
-        # On utilise les variables (qui viennent du state grâce aux keys ci-dessus) comme valeur par défaut
-        pal_L = st.number_input("Longueur Palette (cm)", value=pal_L, key="full_pal_L")
-        pal_w = st.number_input("Largeur Palette (cm)", value=pal_w, key="full_pal_w")
-        pal_H = st.number_input("Hauteur Palette (cm)", value=pal_H, key="full_pal_H")
-        pal_p_max = st.number_input("Poids Limite (kg)", value=pal_p_max, key="full_pal_p")
+        st.number_input("Longueur Palette (cm)", value=pal_L, key="full_pal_L")
+        st.number_input("Largeur Palette (cm)", value=pal_w, key="full_pal_w")
+        st.number_input("Hauteur Palette (cm)", value=pal_H, key="full_pal_H")
+        st.number_input("Poids Limite (kg)", value=pal_p_max, key="full_pal_p")
     
     with col_full2:
         st.subheader("Dimensions du Colis")
-        L = st.number_input("Longueur Box (cm)", value=L, key="full_L")
-        W = st.number_input("Largeur Box (cm)", value=W, key="full_W")
-        H = st.number_input("Hauteur Box (cm)", value=H, key="full_H")
-        box_poids = st.number_input("Poids par Box (kg)", value=box_poids, key="full_poids")
+        st.number_input("Longueur Box (cm)", value=L, key="full_L")
+        st.number_input("Largeur Box (cm)", value=W, key="full_W")
+        st.number_input("Hauteur Box (cm)", value=H, key="full_H")
+        st.number_input("Poids par Box (kg)", value=box_poids, key="full_poids")
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     
-    # LOGIQUE DE MISE À JOUR AJOUTÉE ICI
-    if st.button("CONFIRMER ET ACTUALISER LES RÉSULTATS", use_container_width=True):
-        # On transfère les valeurs 'full_' vers les variables de session principales
+    # --- CORRECTION ICI : Fonction de callback ---
+    # Cette fonction s'exécute AVANT le rechargement de la page, évitant l'erreur.
+    def update_params():
         st.session_state.pal_L = st.session_state.full_pal_L
         st.session_state.pal_w = st.session_state.full_pal_w
         st.session_state.pal_H = st.session_state.full_pal_H
@@ -158,13 +158,14 @@ if st.session_state.view_mode == 'settings':
         st.session_state.W = st.session_state.full_W
         st.session_state.H = st.session_state.full_H
         st.session_state.box_poids = st.session_state.full_poids
-        
         st.session_state.view_mode = 'dashboard'
-        st.rerun()
-        
-    st.stop() # Pour ne pas afficher le dashboard en même temps
 
-# --- 5. ALGORITHME DE CALCUL (Toutes vos lignes conservées) ---
+    st.button("CONFIRMER ET ACTUALISER LES RÉSULTATS", use_container_width=True, on_click=update_params)
+        
+    st.stop() # Arrête le script ici pour ne pas afficher le dashboard en dessous
+
+# --- 5. ALGORITHME DE CALCUL ---
+# (Utilise les variables pal_L, etc. qui sont mises à jour par la sidebar ou le callback)
 orientations = [(L,W,H), (L,H,W), (W,L,H), (W,H,L), (H,L,W), (H,W,L)]
 results = []
 
@@ -190,7 +191,7 @@ for i, (bl, bw, bh) in enumerate(orientations):
 
 best = max(results, key=lambda x: x['Total'])
 
-# Sauvegarde session
+# Sauvegarde des résultats globaux pour usage ailleurs
 if 'pallet_data' not in st.session_state:
     st.session_state.pallet_data = {}
 
@@ -202,7 +203,7 @@ st.session_state.pallet_data = {
     'weight_per_pal': best['Poids (kg)'] + 25 
 }
 
-# --- 6. HEADER HTML (Toutes vos lignes conservées) ---
+# --- 6. HEADER HTML ---
 header_code = """
 <!DOCTYPE html><html><head>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
@@ -232,12 +233,12 @@ header_code = """
 """
 components.html(header_code, height=200)
 
-# Bouton pour passer en mode plein écran
-if st.button("🛠️CONFIGURATION"):
+# Bouton pour passer en mode plein écran (paramètres)
+if st.button("🛠️ CONFIGURATION"):
     st.session_state.view_mode = 'settings'
     st.rerun()
 
-# --- 7. SECTION KPI (Toutes vos lignes conservées) ---
+# --- 7. SECTION KPI ---
 col1, col2, col3, col4 = st.columns(4)
 kpis = [("Capacité Totale", best['Total'], "Colis"), ("Par Couche", best['Par Couche'], "Colis"), ("Nombre de Couches", best['Nb Couches'], "Niveaux"), ("Poids Estimé", f"{int(best['Poids (kg)'])}", "kg")]
 
@@ -247,7 +248,7 @@ for col, (label, value, unit) in zip([col1, col2, col3, col4], kpis):
 
 st.markdown("---")
 
-# --- 8. VISUALISATION ET RAPPORT (Toutes vos lignes conservées) ---
+# --- 8. VISUALISATION ET RAPPORT ---
 c1, c2 = st.columns([1.5, 1], gap="large")
 
 with c1:
@@ -340,7 +341,7 @@ with c2:
     
     df_results = pd.DataFrame(results)
     st.download_button("📥 TÉLÉCHARGER LE RAPPORT CSV", df_results.to_csv(index=False).encode('utf-8'), "rapport.csv")
-    # --- BOUTON DE NAVIGATION AJOUTÉ ICI ---
+    
     st.markdown("---")
     st.markdown("### 🚢 Calcul Conteneur")
     st.info("Utiliser ces dimensions pour calculer le remplissage d'un conteneur.")
