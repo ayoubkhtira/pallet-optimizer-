@@ -1,8 +1,25 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+import io
+import plotly.graph_objects as go
+import requests
+import plotly.express as px
 import streamlit.components.v1 as components 
 import math
 
+TOKEN = st.secrets["TELEGRAM_TOKEN"]
+CHAT_ID = st.secrets["TELEGRAM_CHAT_ID"]
+
+def send_telegram_feedback(name, message):
+    if TOKEN == "TON_TOKEN_BOT_TELEGRAM":
+        return # Ne rien faire si pas configuré
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    text = f"🚀 *Nouvel avis sur l'app VAM*\n\n*Nom:* {name}\n*Message:* {message}"
+    try:
+        requests.post(url, json={"chat_id": CHAT_ID, "text": text, "parse_mode": "Markdown"})
+    except:
+        pass
 # --- 1. CONFIGURATION DE LA PAGE ---
 st.set_page_config(
     page_title="Pallet Optimizer Pro",
@@ -319,6 +336,18 @@ with c2:
         st.switch_page("pages/app3.py")
 with st.expander("Comparaison des 6 orientations possibles"):
     st.table(df_results[['Orientation', 'Hauteur', 'Total', 'Par Couche', 'Nb Couches', 'Poids (kg)']])
+
+# --- SECTION AVIS & TELEGRAM ---
+st.divider()
+st.subheader("💬 Votre Avis")
+with st.form("feedback_form", clear_on_submit=True):
+    name = st.text_input("Votre Nom")
+    msg = st.text_area("Votre Commentaire")
+    if st.form_submit_button("Envoyer l'avis"):
+        if msg:
+            send_telegram_feedback(name, msg)
+            st.success("✅ Merci ! Votre avis a été envoyé et sera consulté.")
+
 
 
 
