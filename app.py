@@ -12,7 +12,7 @@ def send_telegram_feedback(name, message):
     if TOKEN == "TON_TOKEN_BOT_TELEGRAM":
         return 
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    text = f"🚀 *Nouvel avis sur l'app VAM*\n\n*Nom:* {name}\n*Message:* {message}"
+    text = f"🚀 *Nouvel avis sur l'app PALLET OPTIMIZER *\n\n*Nom:* {name}\n*Message:* {message}"
     try:
         requests.post(url, json={"chat_id": CHAT_ID, "text": text, "parse_mode": "Markdown"})
     except:
@@ -354,10 +354,26 @@ with st.expander("Comparaison des 6 orientations possibles"):
 # --- SECTION AVIS & TELEGRAM ---
 st.divider()
 st.subheader("💬 Votre Avis")
+
 with st.form("feedback_form", clear_on_submit=True):
-    name = st.text_input("Votre Nom")
-    msg = st.text_area("Votre Commentaire")
-    if st.form_submit_button("Envoyer l'avis"):
+    name = st.text_input("👤 Votre Nom (ou entreprise)")
+    msg = st.text_area("✍️ Votre commentaire ou suggestion")
+    
+    # Bouton d'envoi
+    submit_button = st.form_submit_button("🚀 Envoyer l'avis", type="primary", use_container_width=True)
+
+    if submit_button:
         if msg:
-            send_telegram_feedback(name, msg)
-            st.success("✅ Merci ! Votre avis a été envoyé et sera consulté.")
+            # 1. Animation de chargement pendant l'appel API
+            with st.status("Transmission de votre message ...", expanded=False) as status:
+                success = send_telegram_feedback(name, msg)
+                status.update(label="Message transmis avec succès ! ✅", state="complete")
+            
+            # 2. Petite notification discrète en bas à droite
+            st.toast(f"Merci {name if name else ''} ! Avis reçu.", icon='📩')
+            # Message de succès final
+            st.success("✅ Votre avis a été envoyé et sera consulté par l'équipe.")
+        else:
+            st.warning("⚠️ Le champ commentaire ne peut pas être vide.")
+
+
