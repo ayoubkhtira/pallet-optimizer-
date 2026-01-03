@@ -352,26 +352,46 @@ with st.expander("Comparaison des 6 orientations possibles"):
     st.table(df_results[['Orientation', 'Hauteur', 'Total', 'Par Couche', 'Nb Couches', 'Poids (kg)']])
 
 # --- SECTION AVIS & TELEGRAM ---
+# --- SECTION AVIS & TELEGRAM ---
 st.divider()
 st.subheader("💬 Votre Avis")
+
+# Injection CSS ultra-spécifique pour forcer l'orange
+st.markdown("""
+    <style>
+    /* On cible le bouton par son type et on force avec !important sur tous les états */
+    button[kind="primaryFormSubmit"] {
+        background-color: #e67e22 !important;
+        color: white !important;
+        border: none !important;
+    }
+    
+    /* On force aussi l'état au survol et au clic */
+    button[kind="primaryFormSubmit"]:hover, 
+    button[kind="primaryFormSubmit"]:active, 
+    button[kind="primaryFormSubmit"]:focus {
+        background-color: #d35400 !important;
+        color: white !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 with st.form("feedback_form", clear_on_submit=True):
     name = st.text_input("👤 Votre Nom (ou entreprise)")
     msg = st.text_area("✍️ Votre commentaire ou suggestion")
     
-    # Bouton d'envoi
+    # Utilisation du type="primary" qui sera intercepté par le CSS ci-dessus
     submit_button = st.form_submit_button("🚀 Envoyer l'avis", type="primary", use_container_width=True)
 
     if submit_button:
         if msg:
-            # 1. Animation de chargement pendant l'appel API
             with st.status("Transmission de votre message ...", expanded=False) as status:
-                success = send_telegram_feedback(name, msg)
+                send_telegram_feedback(name, msg)
                 status.update(label="Message transmis avec succès ! ✅", state="complete")
             
-            # 2. Petite notification discrète en bas à droite
             st.toast(f"Merci {name if name else ''} ! Avis reçu.", icon='📩')
-            # Message de succès final
             st.success("✅ Votre avis a été envoyé et sera consulté par l'équipe.")
         else:
             st.warning("⚠️ Le champ commentaire ne peut pas être vide.")
