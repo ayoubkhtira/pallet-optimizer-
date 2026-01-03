@@ -337,17 +337,74 @@ with col_main:
 
 
 
-st.subheader("📐 Plan de chargement (Vue de dessus)")
+st.subheader("📐 Plan de chargement (Vue de dessus optimisée)")
+
+# Récupération des données de calcul
 grid_cols = res['nx']
 palettes_sol = res['palettes_sol']
+niveaux = res['niveaux']
 
-cells = "".join([f'<div style="background:#e67e22; border:1px solid white; height:60px; display:flex; align-items:center; justify-content:center; color:white; font-size:12px; font-weight:bold;">P (x{res["niveaux"]})</div>' for _ in range(palettes_sol)])
+# Logique de rendu visuel réaliste
+# On calcule si la palette est plus large que longue pour ajuster le ratio CSS
+aspect_ratio = "1.5 / 1" if p_L > p_W else "1 / 1.5"
 
+# Génération des cellules (Palettes)
+cells = ""
+for i in range(palettes_sol):
+    cells += f"""
+    <div style="
+        background: #e67e22; 
+        border: 2px solid #ffffff; 
+        aspect-ratio: {aspect_ratio}; 
+        display: flex; 
+        flex-direction: column;
+        align-items: center; 
+        justify-content: center; 
+        color: white; 
+        font-family: 'Poppins', sans-serif;
+        border-radius: 4px;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+    ">
+        <span style="font-size: 10px; opacity: 0.8;">PALETTE</span>
+        <span style="font-size: 14px; font-weight: bold;">x{niveaux}</span>
+    </div>
+    """
+
+# Affichage du conteneur avec une largeur fixe simulée pour le réalisme
 st.markdown(f"""
-<div style="background:#2c3e50; padding:20px; border-radius:10px; border:4px solid #34495e;">
-    <div style="display: grid; grid-template-columns: repeat({grid_cols if grid_cols > 0 else 1}, 1fr); gap: 5px; width: 100%;">
-        {cells if palettes_sol > 0 else '<div style="color:white; text-align:center; width:100%; grid-column: 1 / -1;">Aucune palette ne rentre avec ces dimensions.</div>'}
+<div style="
+    background: #2c3e50; 
+    padding: 30px; 
+    border-radius: 15px; 
+    border: 5px solid #34495e;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    max-width: 100%;
+    margin: auto;
+">
+    <div style="
+        display: grid; 
+        grid-template-columns: repeat({grid_cols if grid_cols > 0 else 1}, 1fr); 
+        gap: 10px; 
+        width: 100%;
+    ">
+        {cells if palettes_sol > 0 else '<div style="color:white; text-align:center; width:100%; grid-column: 1 / -1; padding: 20px;">⚠️ Configuration impossible dans cet espace.</div>'}
+    </div>
+    
+    <div style="
+        width: 100%; 
+        height: 10px; 
+        background: #95a5a6; 
+        margin-top: 20px; 
+        border-radius: 2px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    ">
+        <span style="color: #2c3e50; font-size: 8px; font-weight: bold; letter-spacing: 2px;">PORTES / DOORS</span>
     </div>
 </div>
-<p style="font-size:0.8rem; color:grey; margin-top:5px;">* Agencement optimisé selon les dimensions {p_L}x{p_W} cm.</p>
+<div style="display: flex; justify-content: space-between; padding: 5px;">
+    <p style="font-size:0.8rem; color:grey;">* Plan basé sur une largeur utile de {cont_W} cm</p>
+    <p style="font-size:0.8rem; color:#e67e22; font-weight:bold;">Sens de chargement : {p_L if res['nx'] == int(cont_L/p_L) else p_W} cm face aux portes</p>
+</div>
 """, unsafe_allow_html=True)
