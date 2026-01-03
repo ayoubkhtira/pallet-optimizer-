@@ -121,8 +121,32 @@ def local_css():
 local_css()
 
 # Logique de fermeture forcée si l'état est 'collapsed'
+# --- LOGIQUE MOBILE ET DESKTOP POUR LA SIDEBAR ---
 if st.session_state.sidebar_state == 'collapsed':
+    # On cache totalement
     st.markdown("<style>[data-testid='stSidebar'] { display: none; }</style>", unsafe_allow_html=True)
+else:
+    # On force l'affichage, surtout sur mobile
+    st.markdown(
+        """
+        <style>
+        [data-testid="stSidebar"] {
+            display: block !important;
+            visibility: visible !important;
+            width: 100% !important; /* Prend plus de place sur mobile */
+        }
+        /* Ajustement pour que le contenu ne soit pas écrasé sur petit écran */
+        @media (max-width: 768px) {
+            [data-testid="stSidebar"] {
+                width: 80vw !important; 
+                position: fixed;
+                z-index: 999999;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
 # ==========================================
 # 3. ALGORITHME DE CALCUL PROFESSIONNEL
