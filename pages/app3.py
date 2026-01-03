@@ -21,6 +21,22 @@ CONTAINER_TYPES = {
     "Personnaliser...": {"L": 0.0, "W": 0.0, "H": 0.0, "MaxPayload": 0.0, "Vol": 0.0}
 }
 
+# Initialisation de l'état de la sidebar
+if 'sidebar_state' not in st.session_state:
+    st.session_state.sidebar_state = 'expanded'
+
+# Création d'une colonne pour l'icône de configuration
+col_icon, _ = st.columns([0.1, 0.9])
+
+with col_icon:
+    # Icône moderne pour ouvrir/fermer
+    icon = "⚙️" if st.session_state.sidebar_state == 'expanded' else "🛠️"
+    if st.button(icon):
+        if st.session_state.sidebar_state == 'expanded':
+            st.session_state.sidebar_state = 'collapsed'
+        else:
+            st.session_state.sidebar_state = 'expanded'
+        st.rerun()
 # ==========================================
 # 2. FRONT-END (STYLE ORANGE HARMONISÉ)
 # ==========================================
@@ -28,10 +44,17 @@ def local_css():
     st.markdown(
         """
         <style>
+        /* 1. Masquer la navigation et la flèche standard */
         [data-testid="stSidebarNav"] { display: none !important; }
         button[kind="headerNoPadding"] { display: none !important; }
-        [data-testid="stSidebarUserContent"] { padding-top: 20px !important; }
-        /* ----------------- */
+
+        /* 2. Logique pour masquer/afficher la sidebar selon l'état du bouton */
+        if st.session_state.get('sidebar_state') == 'collapsed':
+            st.markdown(
+                "<style>[data-testid='stSidebar'] { display: none; }</style>",
+                unsafe_allow_html=True
+            )
+2. Le bouton "Toggle" (L'icône de configuration)
 
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
         
