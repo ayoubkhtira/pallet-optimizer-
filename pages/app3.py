@@ -201,33 +201,93 @@ with col_main:
     st.progress(min(res['utilisation_vol']/100, 1.0))
 
 # ==========================================
-# 6. PLAN DE CHARGEMENT VISUEL AVEC DISTINCTION
+# 7. TABLEAU RÉCAPITULATIF DES SENS DE POSE
 # ==========================================
-st.subheader("📐 Plan de chargement (Vue de dessus réelle)")
+st.subheader("📋 Instructions de chargement détaillées")
 
+# Préparation des données pour le tableau
+data_recap = {
+    "Configuration": ["Palettes Standard (Longitudinales)", "Palettes Optimisées (Tournées)", "TOTAL AU SOL"],
+    "Quantité": [int(res['palettes_main']), int(res['palettes_rotated']), int(res['palettes_sol'])],
+    "Dimensions au sol": [f"{p_long} x {p_short} cm", f"{p_short} x {p_long} cm", "-"],
+    "Orientation": ["Face aux portes : côté court", "Face aux portes : côté long", "Optimisé"]
+}
 
+df_recap = pd.DataFrame(data_recap)
 
-cells_html = ""
-# Palettes Standard
-for _ in range(int(res['palettes_main'])):
-    cells_html += f"""<div style="width: 80px; height: 110px; background: #e67e22; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border-radius: 3px; margin: 4px; font-size: 12px; flex-shrink: 0;">x{res['niveaux']}</div>"""
-
-# Palettes Tournées (Indicateur visuel spécial)
-for _ in range(int(res['palettes_rotated'])):
-    cells_html += f"""<div style="width: 110px; height: 80px; background: #2c3e50; border: 2px solid #e67e22; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; border-radius: 3px; margin: 4px; font-size: 10px; flex-shrink: 0;">
-        <span style="font-size: 14px;">🔄</span>
-        <span>x{res['niveaux']}</span>
-    </div>"""
-
-st.markdown(f"""
-<div style="background: #ecf0f1; padding: 20px; border-radius: 12px; border: 2px solid #bdc3c7;">
-    <div style="background: #2c3e50; padding: 20px; border-radius: 5px; min-height: 250px; display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: flex-start; box-shadow: inset 0 0 50px rgba(0,0,0,0.5);">
-        {cells_html if res['palettes_sol'] > 0 else '<div style="color:white;">Aucun chargement possible</div>'}
-    </div>
-    <div style="width: 100%; height: 15px; background: repeating-linear-gradient(45deg, #e67e22, #e67e22 10px, #333 10px, #333 20px); margin-top: 10px; border-radius: 4px;"></div>
-    <div style="display: flex; gap: 20px; margin-top: 10px;">
-        <div style="display: flex; align-items: center; font-size: 0.8rem;"><div style="width: 15px; height: 15px; background: #e67e22; margin-right: 5px;"></div> Sens Standard</div>
-        <div style="display: flex; align-items: center; font-size: 0.8rem;"><div style="width: 15px; height: 15px; background: #2c3e50; border: 1px solid #e67e22; margin-right: 5px;"></div> Optimisation (Tournée)</div>
-    </div>
-</div>
+# Affichage avec un style CSS personnalisé pour le tableau
+st.markdown("""
+<style>
+    .recap-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+        font-size: 0.9rem;
+        background-color: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    .recap-table th {
+        background-color: #2c3e50;
+        color: white;
+        text-align: left;
+        padding: 12px;
+    }
+    .recap-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #eee;
+    }
+    .recap-table tr:last-child {
+        font-weight: bold;
+        background-color: #f8f9fa;
+        color: #e67e22;
+    }
+    .highlight-qty {
+        background: #e67e22;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: bold;
+    }
+</style>
 """, unsafe_allow_html=True)
+
+# Construction du tableau HTML
+table_html = f"""
+<table class="recap-table">
+    <thead>
+        <tr>
+            <th>Configuration</th>
+            <th>Quantité</th>
+            <th>Dimensions au sol</th>
+            <th>Orientation Chariot</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Palettes Standard</td>
+            <td><span class="highlight-qty">{int(res['palettes_main'])}</span></td>
+            <td>{p_long} x {p_short} cm</td>
+            <td>Prise par le côté {p_short} cm</td>
+        </tr>
+        <tr>
+            <td>Palettes Tournées (Fond)</td>
+            <td><span class="highlight-qty" style="background:#2c3e50;">{int(res['palettes_rotated'])}</span></td>
+            <td>{p_short} x {p_long} cm</td>
+            <td>Prise par le côté {p_long} cm</td>
+        </tr>
+        <tr>
+            <td>TOTAL UNITÉS AU SOL</td>
+            <td>{int(res['palettes_sol'])}</td>
+            <td>-</td>
+            <td>Chargement Mixte</td>
+        </tr>
+    </tbody>
+</table>
+"""
+
+st.markdown(table_html, unsafe_allow_html=True)
+
+# Petit conseil logistique additionnel
+st.info(f"💡 **Note logistique :** Ce plan permet d'occuper {cont_L} cm sur la longueur totale. Il reste environ {max(0, cont_L - (rows_main * p_long + (p_short if res['palettes_rotated'] > 0 else 0))):.1f} cm de marge de sécurité au fond.")
