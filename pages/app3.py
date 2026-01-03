@@ -21,22 +21,7 @@ CONTAINER_TYPES = {
     "Personnaliser...": {"L": 0.0, "W": 0.0, "H": 0.0, "MaxPayload": 0.0, "Vol": 0.0}
 }
 
-# Initialisation de l'état de la sidebar
-if 'sidebar_state' not in st.session_state:
-    st.session_state.sidebar_state = 'expanded'
 
-# Création d'une colonne pour l'icône de configuration
-col_icon, _ = st.columns([0.1, 0.9])
-
-with col_icon:
-    # Icône moderne pour ouvrir/fermer
-    icon = "⚙️" if st.session_state.sidebar_state == 'expanded' else "🛠️"
-    if st.button(icon):
-        if st.session_state.sidebar_state == 'expanded':
-            st.session_state.sidebar_state = 'collapsed'
-        else:
-            st.session_state.sidebar_state = 'expanded'
-        st.rerun()
 # ==========================================
 # 2. FRONT-END (STYLE ORANGE HARMONISÉ)
 # ==========================================
