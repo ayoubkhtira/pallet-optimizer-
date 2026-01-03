@@ -338,22 +338,7 @@ with col_main:
     total_brut = res['poids_total_brut']
     if total_brut > 0:
         st.markdown(f"""<div style="width: 100%; background-color: #eee; border-radius: 10px; height: 30px; display: flex; overflow: hidden; border: 1px solid #ddd;"><div style="width: {(res['poids_total_box']/total_brut)*100}%; background: #e67e22; height: 100%;"></div><div style="width: {(res['poids_total_supports']/total_brut)*100}%; background: #2c3e50; height: 100%;"></div></div>""", unsafe_allow_html=True)
-# Initialisation de l'état de la sidebar
-if 'sidebar_state' not in st.session_state:
-    st.session_state.sidebar_state = 'expanded'
 
-# Création d'une colonne pour l'icône de configuration
-col_icon, _ = st.columns([0.1, 0.9])
-
-with col_icon:
-    # Icône moderne pour ouvrir/fermer
-    icon = "⚙️" if st.session_state.sidebar_state == 'expanded' else "🛠️"
-    if st.button(icon):
-        if st.session_state.sidebar_state == 'expanded':
-            st.session_state.sidebar_state = 'collapsed'
-        else:
-            st.session_state.sidebar_state = 'expanded'
-        st.rerun()
 # ==========================================
 # 6. RAPPORT D'OPTIMISATION PINWHEEL
 # ==========================================
