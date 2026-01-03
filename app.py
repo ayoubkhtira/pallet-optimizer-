@@ -391,9 +391,9 @@ with st.form("feedback_form", clear_on_submit=True):
                 send_telegram_feedback(name, msg)
                 status.update(label="Message transmis avec succès ! ✅", state="complete")
             
-            st.toast(f"Merci {name if name else ''} ! Avis reçu.", icon='📩')
-            st.success("✅ Votre avis a été envoyé et sera consulté par l'équipe.")
+
         else:
             st.warning("⚠️ Le champ commentaire ne peut pas être vide.")
+
 
 
