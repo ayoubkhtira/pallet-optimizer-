@@ -170,7 +170,7 @@ if st.session_state.view_mode == 'settings':
         st.session_state.params['w_pal'] = st.number_input("Poids palette vide (kg)", value=st.session_state.params['w_pal'])
 
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("✅ CONFIRMER ET VOIR LES RÉSULTATS"):
+    if st.button("CONFIRMER ET VOIR LES RÉSULTATS"):
         st.session_state.view_mode = 'dashboard'
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
@@ -210,10 +210,10 @@ else:
     # 2. BOUTON RETOUR & OUVERTURE RÉGLAGES
     col_nav1, col_nav2 = st.columns([1, 4])
     with col_nav1:
-        if st.button("⬅️ RETOUR"):
+        if st.button("RETOUR"):
             st.switch_page("app.py")
     with col_nav2:
-        if st.button("⚙️ OUVRIR LES RÉGLAGES (CONFIGURER LE CHARGEMENT)"):
+        if st.button("⚙️CONFIGURATION"):
             st.session_state.view_mode = 'settings'
             st.rerun()
 
