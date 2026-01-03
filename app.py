@@ -315,10 +315,11 @@ with c2:
     st.markdown("---")
     st.markdown("### 🚢 Calcul Conteneur")
     st.info("Utiliser ces dimensions pour calculer le remplissage d'un conteneur.")
-    if st.button("Aller au Calculateur Conteneur ➡️"):
+    if st.button("Aller au Calculateur Conteneur"):
         st.switch_page("pages/app3.py")
-with st.expander("🔄 Comparaison des 6 orientations possibles"):
+with st.expander("Comparaison des 6 orientations possibles"):
     st.table(df_results[['Orientation', 'Hauteur', 'Total', 'Par Couche', 'Nb Couches', 'Poids (kg)']])
+
 
 
 
