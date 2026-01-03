@@ -114,26 +114,42 @@ def local_css():
 local_css()
 
 # ==========================================
-# 3. ALGORITHME DE CALCUL PROFESSIONNEL
+# 3. ALGORITHME DE CALCUL PROFESSIONNEL (INTÉGRATION PINWHEEL)
 # ==========================================
 def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weight, pallet_support_weight, b_per_p, max_load):
     """
     Algorithme avec distinction Poids des Box et Poids de la Palette (Support)
     """
     if cont_L <= 0 or cont_W <= 0 or cont_H <= 0:
-        return {"palettes_sol": 0, "niveaux": 0, "total_palettes": 0, "poids_total_brut": 0, "utilisation_vol": 0, "nx": 1, "ny": 1}
+        return {"palettes_sol": 0, "niveaux": 0, "total_palettes": 0, "poids_total_brut": 0, "utilisation_vol": 0, "nx": 1, "ny": 1, "extra_p": 0, "orient": "N/A"}
         
     # Calcul du poids brut par unité de chargement
     weight_of_all_boxes = b_per_p * box_unit_weight
     p_total_gross_weight = weight_of_all_boxes + pallet_support_weight
     
-    # 1. Analyse des deux orientations possibles au sol
+    # 1. Analyse des orientations avec Pinwheel Packing (Mixte)
+    # Option A : Longitudinal dominant
     nx1, ny1 = int(cont_L / p_L) if p_L > 0 else 0, int(cont_W / p_W) if p_W > 0 else 0
-    total_1 = nx1 * ny1
+    base_1 = nx1 * ny1
+    rem_L1 = cont_L - (nx1 * p_L)
+    extra_1 = int(cont_W / p_L) if rem_L1 >= p_W and p_L > 0 else 0
+    total_1 = base_1 + extra_1
+
+    # Option B : Transversal dominant
     nx2, ny2 = int(cont_L / p_W) if p_W > 0 else 0, int(cont_W / p_L) if p_L > 0 else 0
-    total_2 = nx2 * ny2
+    base_2 = nx2 * ny2
+    rem_L2 = cont_L - (nx2 * p_W)
+    extra_2 = int(cont_W / p_W) if rem_L2 >= p_L and p_W > 0 else 0
+    total_2 = base_2 + extra_2
     
-    best_sol = max(total_1, total_2)
+    if total_1 >= total_2:
+        best_sol = total_1
+        final_nx, final_ny, final_extra = nx1, ny1, extra_1
+        final_orient = "Longitudinale"
+    else:
+        best_sol = total_2
+        final_nx, final_ny, final_extra = nx2, ny2, extra_2
+        final_orient = "Transversale"
     
     # 2. Analyse du gerbage (Stacking)
     stack_levels = int(cont_H / p_H) if p_H > 0 else 1
@@ -158,8 +174,10 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weigh
         "poids_total_box": final_palettes * weight_of_all_boxes,
         "poids_total_supports": final_palettes * pallet_support_weight,
         "utilisation_vol": utilization,
-        "nx": nx1 if total_1 >= total_2 else nx2,
-        "ny": ny1 if total_1 >= total_2 else ny2
+        "nx": final_nx,
+        "ny": final_ny,
+        "extra_p": final_extra,
+        "orient": final_orient
     }
 
 def get_excel_binary(df_res, df_cfg):
@@ -303,7 +321,7 @@ with col_cfg:
     
     calc_mode = st.radio("Mode d'analyse :", ["Plein potentiel", "Quantité spécifique"])
 
-# Exécution de l'algorithme mis à jour
+# Exécution de l'algorithme mis à jour (Pinwheel inclus)
 res = professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, w_box, w_pal, b_per_p, max_payload)
 
 with col_main:
@@ -348,21 +366,20 @@ with col_main:
     st.download_button("📥 TÉLÉCHARGER LE RAPPORT LOGISTIQUE (EXCEL)", xl_file, "Export_Container.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 # ==========================================
-# 6. SECTION INSTRUCTIONS (REMPLACE LE PLAN)
+# 6. SECTION INSTRUCTIONS (TABLEAU MIXTE PINWHEEL)
 # ==========================================
-st.subheader("📋 Instructions de chargement")
+st.subheader("📋 Instructions de chargement (Pinwheel Packing)")
 st.markdown(f"""
 <div style="background:white; padding:20px; border-radius:10px; border-left:5px solid #2c3e50; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-    <p style="margin:0; font-weight:600; color:#2c3e50;">Configuration au sol :</p>
+    <p style="margin:0; font-weight:600; color:#2c3e50;">Configuration mixte au sol :</p>
     <ul style="color:#666; font-size:0.9rem;">
-        <li>Nombre de rangées : <b>{res['nx']}</b></li>
-        <li>Palettes par rangée : <b>{res['ny']}</b></li>
-        <li>Orientation : <b>{'Longitudinale' if p_L >= p_W else 'Transversale'}</b></li>
+        <li>Sens dominant : <b>{res['orient']}</b> ({res['nx']} rangées)</li>
+        <li>Sens secondaire (Pinwheel) : <b>{'Transversale' if res['orient'] == 'Longitudinale' else 'Longitudinale'}</b></li>
     </ul>
 </div>
 """, unsafe_allow_html=True)
 
-# --- NOUVEAU : TABLEAU DE RÉPARTITION PAR SENS ---
+# --- NOUVEAU : TABLEAU DE RÉPARTITION PAR SENS (PINWHEEL) ---
 st.markdown(f"""
 <table class="recap-table">
     <thead>
@@ -375,16 +392,22 @@ st.markdown(f"""
     </thead>
     <tbody>
         <tr>
-            <td><b>Sens Principal</b></td>
+            <td><b>Sens Principal ({res['orient']})</b></td>
             <td>{res['nx']} rangées x {res['ny']} colonnes</td>
-            <td>{res['palettes_sol']}</td>
-            <td><span style="color:#e67e22; font-weight:bold;">{res['palettes_sol'] * res['niveaux']}</span></td>
+            <td>{res['nx'] * res['ny']}</td>
+            <td><b>{(res['nx'] * res['ny']) * res['niveaux']}</b></td>
         </tr>
         <tr>
+            <td><b>Sens Pinwheel (Espace fond)</b></td>
+            <td>Palettes tournées à 90°</td>
+            <td>{res['extra_p']}</td>
+            <td><b>{res['extra_p'] * res['niveaux']}</b></td>
+        </tr>
+        <tr style="background:#f8f9fa;">
             <td><b>Total par Conteneur</b></td>
-            <td>Capacité volumétrique max</td>
-            <td>{res['palettes_sol']}</td>
-            <td><b>{res['total_palettes']}</b></td>
+            <td>Capacité combinée optimisée</td>
+            <td><b>{res['palettes_sol']}</b></td>
+            <td><span style="color:#e67e22; font-weight:bold;">{res['total_palettes']}</span></td>
         </tr>
     </tbody>
 </table>
