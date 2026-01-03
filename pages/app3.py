@@ -337,21 +337,23 @@ with col_main:
 
 
 
-st.subheader("📐 Plan de chargement (Vue de dessus optimisée)")
+# ==========================================
+# 6. PLAN DE CHARGEMENT VISUEL
+# ==========================================
+st.subheader("📐 Plan de chargement (Vue de dessus)")
 
-# Récupération des données de calcul
 grid_cols = res['nx']
 palettes_sol = res['palettes_sol']
 niveaux = res['niveaux']
 
-# Logique de rendu visuel réaliste
-# On calcule si la palette est plus large que longue pour ajuster le ratio CSS
+# Détermination de l'orientation visuelle (Verticale ou Horizontale)
+# Si nx est petit, c'est que les palettes sont mises dans le sens de la largeur
 aspect_ratio = "1.5 / 1" if p_L > p_W else "1 / 1.5"
 
-# Génération des cellules (Palettes)
-cells = ""
+# Construction de la chaîne HTML pour les cellules
+cells_html = ""
 for i in range(palettes_sol):
-    cells += f"""
+    cells_html += f"""
     <div style="
         background: #e67e22; 
         border: 2px solid #ffffff; 
@@ -365,46 +367,46 @@ for i in range(palettes_sol):
         border-radius: 4px;
         box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
     ">
-        <span style="font-size: 10px; opacity: 0.8;">PALETTE</span>
-        <span style="font-size: 14px; font-weight: bold;">x{niveaux}</span>
+        <span style="font-size: 9px; opacity: 0.8;">PALETTE</span>
+        <span style="font-size: 13px; font-weight: bold;">x{niveaux}</span>
     </div>
     """
 
-# Affichage du conteneur avec une largeur fixe simulée pour le réalisme
+# Rendu final dans un seul bloc st.markdown
 st.markdown(f"""
 <div style="
     background: #2c3e50; 
-    padding: 30px; 
-    border-radius: 15px; 
+    padding: 25px; 
+    border-radius: 12px; 
     border: 5px solid #34495e;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    max-width: 100%;
-    margin: auto;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    width: 100%;
 ">
     <div style="
         display: grid; 
         grid-template-columns: repeat({grid_cols if grid_cols > 0 else 1}, 1fr); 
-        gap: 10px; 
+        gap: 8px; 
         width: 100%;
     ">
-        {cells if palettes_sol > 0 else '<div style="color:white; text-align:center; width:100%; grid-column: 1 / -1; padding: 20px;">⚠️ Configuration impossible dans cet espace.</div>'}
+        {cells_html if palettes_sol > 0 else '<div style="color:white; text-align:center; width:100%; grid-column: 1 / -1; padding: 20px;">Configuration non réalisable</div>'}
     </div>
     
     <div style="
         width: 100%; 
-        height: 10px; 
+        height: 12px; 
         background: #95a5a6; 
         margin-top: 20px; 
         border-radius: 2px;
         display: flex;
         justify-content: center;
         align-items: center;
+        border-bottom: 3px solid #7f8c8d;
     ">
-        <span style="color: #2c3e50; font-size: 8px; font-weight: bold; letter-spacing: 2px;">PORTES / DOORS</span>
+        <span style="color: #2c3e50; font-size: 9px; font-weight: bold; letter-spacing: 3px;">PORTES / DOORS</span>
     </div>
 </div>
-<div style="display: flex; justify-content: space-between; padding: 5px;">
-    <p style="font-size:0.8rem; color:grey;">* Plan basé sur une largeur utile de {cont_W} cm</p>
-    <p style="font-size:0.8rem; color:#e67e22; font-weight:bold;">Sens de chargement : {p_L if res['nx'] == int(cont_L/p_L) else p_W} cm face aux portes</p>
+<div style="display: flex; justify-content: space-between; padding: 10px 5px;">
+    <p style="font-size:0.8rem; color:grey; margin:0;">* Longueur conteneur : {cont_L} cm</p>
+    <p style="font-size:0.8rem; color:#e67e22; font-weight:bold; margin:0;">Disposition : {grid_cols} colonnes au sol</p>
 </div>
 """, unsafe_allow_html=True)
