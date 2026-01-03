@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Dimensions techniques réelles (Espace de manoeuvre inclus)
+# Dimensions techniques réelles
 CONTAINER_TYPES = {
     "1 EVP (20' Standard)": {"L": 589.8, "W": 235.2, "H": 239.3, "MaxPayload": 28200, "Vol": 33.2},
     "2 EVP (40' Standard)": {"L": 1203.2, "W": 235.2, "H": 239.3, "MaxPayload": 26700, "Vol": 67.7},
@@ -21,105 +21,72 @@ CONTAINER_TYPES = {
     "Personnaliser...": {"L": 0.0, "W": 0.0, "H": 0.0, "MaxPayload": 0.0, "Vol": 0.0}
 }
 
-# Initialisation de l'état pour l'ouverture/fermeture
-if 'sidebar_state' not in st.session_state:
-    st.session_state.sidebar_state = 'expanded'
+# Initialisation des états
+if 'view_mode' not in st.session_state:
+    st.session_state.view_mode = 'dashboard'
+
+if 'params' not in st.session_state:
+    st.session_state.params = {
+        'cont_choice': "2 EVP (40' Standard)",
+        'p_L': 120.0, 'p_W': 80.0, 'p_H': 160.0,
+        'b_per_p': 40, 'w_box': 12.5, 'w_pal': 25.0,
+        'calc_mode': "Plein potentiel", 'target_box': 500,
+        'cust_L': 1200.0, 'cust_W': 235.0, 'cust_H': 240.0, 'cust_Payload': 28000.0
+    }
 
 # ==========================================
-# 2. FRONT-END (STYLE COMPLET SANS RÉDUCTION)
+# 2. STYLE CSS COMPLET (SANS AUCUNE RÉDUCTION)
 # ==========================================
 def local_css():
     st.markdown(
         """
         <style>
-        /* Masquer la navigation par défaut de Streamlit */
+        /* Masquer les éléments natifs */
         [data-testid="stSidebarNav"] { display: none !important; }
         button[kind="headerNoPadding"] { display: none !important; }
+        [data-testid="stSidebar"] { display: none; } 
 
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
         
-        .stApp {
-            background-color: #f8f9fa;
-            font-family: 'Poppins', sans-serif;
-        }
+        .stApp { background-color: #f8f9fa; font-family: 'Poppins', sans-serif; }
 
-        h1 {
-            color: #2c3e50;
-            font-weight: 700;
-            letter-spacing: -1px;
-            margin-bottom: 5px;
-        }
-
+        /* Style des cartes de métriques */
         .metric-container {
-            background-color: white;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            text-align: center;
-            transition: transform 0.3s ease;
-            border-bottom: 4px solid #e67e22;
+            background-color: white; padding: 25px; border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center;
+            transition: transform 0.3s ease; border-bottom: 4px solid #e67e22;
         }
-        .metric-container:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(230, 126, 34, 0.15);
-        }
-        .metric-value {
-            font-size: 2.2rem;
-            font-weight: 700;
-            color: #2c3e50;
-            margin: 0;
-        }
-        .metric-label {
-            font-size: 0.8rem;
-            color: #95a5a6;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
+        .metric-container:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(230,126,34,0.15); }
+        .metric-value { font-size: 2.2rem; font-weight: 700; color: #2c3e50; margin: 0; }
+        .metric-label { font-size: 0.8rem; color: #95a5a6; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 5px; }
 
+        /* Style des boutons */
         .stButton > button {
-            background-color: #e67e22 !important;
-            color: white !important;
-            border-radius: 30px !important;
-            padding: 0.6rem 2rem !important;
-            font-weight: 600 !important;
-            border: none !important;
-            width: 100%;
+            background-color: #e67e22 !important; color: white !important;
+            border-radius: 30px !important; padding: 0.8rem 2rem !important;
+            font-weight: 700 !important; width: 100%; border: none !important;
+            text-transform: uppercase; letter-spacing: 1px;
         }
         
-        [data-testid="stSidebar"] {
-            background-color: #ffffff;
-            border-right: 1px solid #eaeaea;
-        }
-        
-        /* Correction pour affichage mobile fluide */
-        @media (max-width: 768px) {
-            [data-testid="stSidebar"] {
-                width: 85vw !important;
-            }
-        }
-
         .status-box {
-            background: #ffffff;
-            border-left: 5px solid #e67e22;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 10px;
+            background: #ffffff; border-left: 5px solid #e67e22;
+            padding: 15px; border-radius: 5px; margin-top: 10px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
-        .weight-info { font-size: 0.75rem; color: #666; font-style: italic; margin-top: -10px; margin-bottom: 10px; }
         
         .recap-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-top: 20px;
+            width: 100%; border-collapse: collapse; background: white;
+            border-radius: 10px; overflow: hidden; margin-top: 20px;
         }
         .recap-table th { background: #2c3e50; color: white; padding: 12px; text-align: left; }
         .recap-table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        
+        /* Conteneur de réglages plein écran */
+        .settings-container {
+            background: white; padding: 40px; border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1); border-top: 10px solid #e67e22;
+            margin-top: 20px;
+        }
         </style>
         """,
         unsafe_allow_html=True
@@ -127,12 +94,8 @@ def local_css():
 
 local_css()
 
-# Logique de fermeture forcée
-if st.session_state.sidebar_state == 'collapsed':
-    st.markdown("<style>[data-testid='stSidebar'] { display: none; }</style>", unsafe_allow_html=True)
-
 # ==========================================
-# 3. ALGORITHME DE CALCUL PROFESSIONNEL
+# 3. ALGORITHME DE CALCUL (INTÉGRAL)
 # ==========================================
 def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weight, pallet_support_weight, b_per_p, max_load):
     if cont_L <= 0 or cont_W <= 0 or cont_H <= 0:
@@ -140,15 +103,15 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weigh
         
     weight_of_all_boxes = b_per_p * box_unit_weight
     p_total_gross_weight = weight_of_all_boxes + pallet_support_weight
-    
-    stack_levels = int((cont_H - 5) / p_H) if p_H > 0 else 1
-    if stack_levels < 1: stack_levels = 1
+    stack_levels = max(1, int((cont_H - 5) / p_H))
 
+    # Calcul Orientation 1
     nx1, ny1 = int(cont_L / p_L) if p_L > 0 else 0, int(cont_W / p_W) if p_W > 0 else 0
     rem_L1 = cont_L - (nx1 * p_L)
     extra_1 = int(cont_W / p_L) if rem_L1 >= p_W and p_L > 0 else 0
     total_sol_1 = (nx1 * ny1) + extra_1
 
+    # Calcul Orientation 2
     nx2, ny2 = int(cont_L / p_W) if p_W > 0 else 0, int(cont_W / p_L) if p_L > 0 else 0
     rem_L2 = cont_L - (nx2 * p_W)
     extra_2 = int(cont_W / p_W) if rem_L2 >= p_L and p_W > 0 else 0
@@ -160,13 +123,8 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weigh
         best_sol, f_nx, f_ny, f_extra, f_orient = total_sol_2, nx2, ny2, extra_2, "Transversale"
     
     theoretical_total = best_sol * stack_levels
+    final_palettes = min(theoretical_total, int(max_load / p_total_gross_weight)) if p_total_gross_weight > 0 else theoretical_total
     
-    if p_total_gross_weight > 0 and max_load > 0:
-        max_pals_weight = int(max_load / p_total_gross_weight)
-        final_palettes = min(theoretical_total, max_pals_weight)
-    else:
-        final_palettes = theoretical_total
-        
     vol_pal = (p_L * p_W * p_H) * final_palettes
     vol_cont = cont_L * cont_W * cont_H
     utilization = (vol_pal / vol_cont) * 100 if vol_cont > 0 else 0
@@ -179,218 +137,128 @@ def professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, box_unit_weigh
         "utilisation_vol": utilization, "nx": f_nx, "ny": f_ny, "extra_p": f_extra, "orient": f_orient
     }
 
-def get_excel_binary(df_res, df_cfg):
-    out = BytesIO()
-    with pd.ExcelWriter(out, engine='xlsxwriter') as writer:
-        df_res.to_excel(writer, index=False, sheet_name='Analyse_Chargement')
-        df_cfg.to_excel(writer, index=False, sheet_name='Specs_Techniques')
-    return out.getvalue()
-
 # ==========================================
-# 4. SIDEBAR & NAVIGATION (CONTENU ORIGINAL COMPLET)
+# 4. AFFICHAGE CONDITIONNEL
 # ==========================================
-with st.sidebar:
-    st.markdown("""
-        <style>
-        .stSidebar [data-testid="stVerticalBlock"] { gap: 0.5rem; }
-        .back-btn-container { padding: 10px 0px; border-bottom: 1px solid #eee; margin-bottom: 15px; }
-        .stSidebar .stButton > button {
-            background-color: transparent !important;
-            color: #e67e22 !important;
-            border: 2px solid #e67e22 !important;
-            transition: all 0.3s ease !important;
-        }
-        .stSidebar .stButton > button:hover {
-            background-color: #e67e22 !important;
-            color: white !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
 
-    st.markdown('<div class="back-btn-container">', unsafe_allow_html=True)
-    if st.button("RETOUR PALETTISATION"):
-        st.switch_page("app.py")
-    st.markdown('</div>', unsafe_allow_html=True)
+if st.session_state.view_mode == 'settings':
+    # --- PAGE PARAMÈTRES (PLEIN ÉCRAN) ---
+    st.markdown('<div class="settings-container">', unsafe_allow_html=True)
+    st.title("⚙️ RÉGLAGES DU CHARGEMENT")
     
-    st.markdown("### ⚙️ PARAMÈTRES")
-    with st.expander("🏗️ DIMENSIONS & QUANTITÉ", expanded=True):
-        p_data = st.session_state.get('pallet_data', {})
-        p_L = st.number_input("Longueur Palette (cm)", value=float(p_data.get('pal_L', 120)))
-        p_W = st.number_input("Largeur Palette (cm)", value=float(p_data.get('pal_w', 80)))
-        p_H = st.number_input("Hauteur avec Box (cm)", value=float(p_data.get('pal_H', 160)))
-        b_per_p = st.number_input("Nombre de Box par Palette", value=int(p_data.get('box_per_pal', 40)))
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.subheader("🏗️ UNITÉ DE TRANSPORT")
+        st.session_state.params['cont_choice'] = st.selectbox("Sélectionner un conteneur :", list(CONTAINER_TYPES.keys()))
+        if st.session_state.params['cont_choice'] == "Personnaliser...":
+            st.session_state.params['cust_L'] = st.number_input("Longueur Int. (cm)", value=st.session_state.params['cust_L'])
+            st.session_state.params['cust_W'] = st.number_input("Largeur Int. (cm)", value=st.session_state.params['cust_W'])
+            st.session_state.params['cust_H'] = st.number_input("Hauteur Int. (cm)", value=st.session_state.params['cust_H'])
+            st.session_state.params['cust_Payload'] = st.number_input("Charge Utile Max (kg)", value=st.session_state.params['cust_Payload'])
+        
+        st.session_state.params['calc_mode'] = st.radio("Méthode de calcul :", ["Plein potentiel", "Quantité spécifique"])
+        if st.session_state.params['calc_mode'] == "Quantité spécifique":
+            st.session_state.params['target_box'] = st.number_input("Nombre de Box total :", value=st.session_state.params['target_box'])
 
-    with st.expander("⚖️ MASSE DES COMPOSANTS", expanded=True):
-        w_box = st.number_input("Poids d'une seule Box (kg)", value=12.5)
-        st.markdown(f'<p class="weight-info">Soit {w_box * b_per_p} kg de box par palette</p>', unsafe_allow_html=True)
-        w_pal = st.number_input("Poids de la Palette support (kg)", value=25.0)
-        st.markdown('<p class="weight-info">Poids du support bois/plastique seul</p>', unsafe_allow_html=True)
-        total_p_weight = (w_box * b_per_p) + w_pal
-        st.markdown(f"**Poids Brut / Palette :** `{total_p_weight} kg`")
+    with col_b:
+        st.subheader("📦 UNITÉ DE CHARGE (PALETTE)")
+        st.session_state.params['p_L'] = st.number_input("Longueur (cm)", value=st.session_state.params['p_L'])
+        st.session_state.params['p_W'] = st.number_input("Largeur (cm)", value=st.session_state.params['p_W'])
+        st.session_state.params['p_H'] = st.number_input("Hauteur totale (cm)", value=st.session_state.params['p_H'])
+        st.session_state.params['b_per_p'] = st.number_input("Box par palette", value=st.session_state.params['b_per_p'])
+        st.session_state.params['w_box'] = st.number_input("Poids d'une box (kg)", value=st.session_state.params['w_box'])
+        st.session_state.params['w_pal'] = st.number_input("Poids palette vide (kg)", value=st.session_state.params['w_pal'])
 
-# ==========================================
-# 5. INTERFACE PRINCIPALE (HEADER HTML + TOGGLE)
-# ==========================================
-header_code = """
-<!DOCTYPE html>
-<html>
-<head>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-<style>
-    body { margin: 0; padding: 0; background-color: transparent; font-family: 'Roboto', sans-serif; overflow: hidden; }
-    .main-header {
-        position: relative; padding: 30px; background: #0a0a0a; border-radius: 10px;
-        border-left: 12px solid #e67e22; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-        min-height: 120px; display: flex; flex-direction: column; justify-content: center;
-    }
-    #bg-carousel {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background-size: cover; background-position: center; opacity: 0.3; transition: background-image 1.5s ease-in-out; z-index: 0;
-    }
-    .overlay {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
-        background-size: 100% 4px; z-index: 1; pointer-events: none;
-    }
-    .content { position: relative; z-index: 2; }
-    h1 { font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 5px; font-size: 2.2rem; margin: 0; color: #ffffff; text-shadow: 0 0 15px rgba(230, 126, 34, 0.8); }
-    .status { color: #e67e22; font-weight: 700; letter-spacing: 4px; font-size: 0.8rem; text-transform: uppercase; margin-top: 10px; }
-    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-    .active-dot { display: inline-block; width: 10px; height: 10px; background: #fff; border-radius: 50%; margin-left: 10px; animation: blink 1.5s infinite; box-shadow: 0 0 8px #fff; }
-</style>
-</head>
-<body>
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("✅ CONFIRMER ET VOIR LES RÉSULTATS"):
+        st.session_state.view_mode = 'dashboard'
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+else:
+    # --- PAGE DASHBOARD (LIGNES ORIGINALES RECONSTRUITES) ---
+    
+    # 1. HEADER HTML COMPLET AVEC CARROUSEL ET POINT CLIGNOTANT
+    header_html = """
+    <!DOCTYPE html><html><head>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; background: transparent; font-family: 'Roboto', sans-serif; }
+        .main-header { position: relative; padding: 30px; background: #0a0a0a; border-radius: 10px; border-left: 12px solid #e67e22; overflow: hidden; min-height: 120px; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
+        #bg-carousel { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; opacity: 0.3; transition: 1.5s; z-index: 0; }
+        .content { position: relative; z-index: 2; }
+        h1 { font-family: 'Orbitron'; text-transform: uppercase; letter-spacing: 5px; font-size: 2.2rem; margin: 0; color: white; text-shadow: 0 0 15px rgba(230, 126, 34, 0.8); }
+        .status { color: #e67e22; font-weight: 700; letter-spacing: 4px; font-size: 0.8rem; text-transform: uppercase; margin-top: 10px; }
+        .active-dot { display: inline-block; width: 10px; height: 10px; background: #fff; border-radius: 50%; margin-left: 10px; animation: blink 1.5s infinite; box-shadow: 0 0 8px #fff; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    </style></head><body>
     <div class="main-header">
         <div id="bg-carousel"></div>
-        <div class="overlay"></div>
         <div class="content">
-            <h1> Container Optimizer <span style="color:#e67e22;">Pro</span></h1>
-            <div class="status">Logistics Intelligence  <span class="active-dot"></span></div>
+            <h1>Container Optimizer <span style="color:#e67e22;">Pro</span></h1>
+            <div class="status">Logistics Intelligence <span class="active-dot"></span></div>
         </div>
     </div>
     <script>
         const images = ["https://img.freepik.com/photos-premium/entrepot-rempli-beaucoup-palettes-bois-ai-generative_797840-6266.jpg", "https://img.freepik.com/photos-premium/enorme-entrepot-centre-distribution-produits-entrepot-detail-plein-etageres-marchandises-dans-cartons-palettes-chariots-elevateurs-logistique-transport-arriere-plan-flou-format-photo-32_177786-4792.jpg?w=2000"];
-        let index = 0;
-        const bgDiv = document.getElementById('bg-carousel');
-        function changeBackground() {
-            bgDiv.style.backgroundImage = "url('" + images[index] + "')";
-            index = (index + 1) % images.length;
-        }
-        changeBackground();
-        setInterval(changeBackground, 5000);
-    </script>
-</body>
-</html>
-"""
-components.html(header_code, height=200)
+        let i = 0; setInterval(() => { document.getElementById('bg-carousel').style.backgroundImage = "url('" + images[i] + "')"; i = (i + 1) % images.length; }, 5000);
+        document.getElementById('bg-carousel').style.backgroundImage = "url('" + images[0] + "')";
+    </script></body></html>
+    """
+    components.html(header_html, height=200)
 
-# BOUTON TOGGLE (AJOUTÉ POUR LE MOBILE)
-btn_label = "⚙️ FERMER LES PARAMÈTRES" if st.session_state.sidebar_state == 'expanded' else "🛠️ OUVRIR LES PARAMÈTRES"
-if st.button(btn_label, use_container_width=True):
-    st.session_state.sidebar_state = 'collapsed' if st.session_state.sidebar_state == 'expanded' else 'expanded'
-    st.rerun()
+    # 2. BOUTON RETOUR & OUVERTURE RÉGLAGES
+    col_nav1, col_nav2 = st.columns([1, 4])
+    with col_nav1:
+        if st.button("⬅️ RETOUR"):
+            st.switch_page("app.py")
+    with col_nav2:
+        if st.button("⚙️ OUVRIR LES RÉGLAGES (CONFIGURER LE CHARGEMENT)"):
+            st.session_state.view_mode = 'settings'
+            st.rerun()
 
-col_cfg, col_main = st.columns([1, 2.2], gap="large")
-
-with col_cfg:
-    st.subheader("🏗️ Type de Conteneur")
-    c_choice = st.selectbox("Choisir l'équipement :", list(CONTAINER_TYPES.keys()))
-    
-    if c_choice == "Personnaliser...":
-        st.info("Saisissez vos dimensions personnalisées :")
-        cont_L = st.number_input("Longueur Int. (cm)", value=1200.0)
-        cont_W = st.number_input("Largeur Int. (cm)", value=235.0)
-        cont_H = st.number_input("Hauteur Int. (cm)", value=240.0)
-        max_payload = st.number_input("Charge Utile Max (kg)", value=28000.0)
-        vol_cust = (cont_L * cont_W * cont_H) / 1000000
-        c_specs = {"L": cont_L, "W": cont_W, "H": cont_H, "MaxPayload": max_payload, "Vol": round(vol_cust, 2)}
+    # 3. RÉCUPÉRATION DES DONNÉES ET CALCULS
+    p = st.session_state.params
+    if p['cont_choice'] == "Personnaliser...":
+        cont_L, cont_W, cont_H, max_payload = p['cust_L'], p['cust_W'], p['cust_H'], p['cust_Payload']
     else:
-        c_specs = CONTAINER_TYPES[c_choice]
-        cont_L, cont_W, cont_H = c_specs['L'], c_specs['W'], c_specs['H']
-        max_payload = c_specs['MaxPayload']
-    
-    st.markdown(f"""
-    <div class="status-box">
-        <b>Spécifications Actuelles :</b><br>
-        • Longueur : {cont_L} cm<br>
-        • Largeur : {cont_W} cm<br>
-        • Hauteur : {cont_H} cm<br>
-        • Charge Max : {max_payload} kg<br>
-        • Volume : {c_specs['Vol']} m³
-    </div>
-    """, unsafe_allow_html=True)
-    
-    calc_mode = st.radio("Mode d'analyse :", ["Plein potentiel", "Quantité spécifique"])
+        specs = CONTAINER_TYPES[p['cont_choice']]
+        cont_L, cont_W, cont_H, max_payload = specs['L'], specs['W'], specs['H'], specs['MaxPayload']
 
-res = professional_load_calc(cont_L, cont_W, cont_H, p_L, p_W, p_H, w_box, w_pal, b_per_p, max_payload)
+    res = professional_load_calc(cont_L, cont_W, cont_H, p['p_L'], p['p_W'], p['p_H'], p['w_box'], p['w_pal'], p['b_per_p'], max_payload)
 
-with col_main:
-    if calc_mode == "Quantité spécifique":
-        target_box = st.number_input("Nombre de Box à charger :", value=500, step=50)
-        needed_pals = math.ceil(target_box / b_per_p) if b_per_p > 0 else 0
-        limit_pal_per_cont = res['total_palettes'] if res['total_palettes'] > 0 else 1
-        needed_conts = math.ceil(needed_pals / limit_pal_per_cont)
-        display_pals, display_box, display_cont = needed_pals, target_box, needed_conts
+    # 4. AFFICHAGE DES MÉTRIQUES
+    if p['calc_mode'] == "Quantité spécifique":
+        disp_pals = math.ceil(p['target_box'] / p['b_per_p'])
+        disp_box = p['target_box']
+        limit_per_cont = res['total_palettes'] if res['total_palettes'] > 0 else 1
+        disp_cont = math.ceil(disp_pals / limit_per_cont)
     else:
-        display_pals, display_box, display_cont = res['total_palettes'], res['total_palettes'] * b_per_p, 1.0
+        disp_pals, disp_box, disp_cont = res['total_palettes'], res['total_palettes'] * p['b_per_p'], 1.0
 
     m1, m2, m3 = st.columns(3)
-    metrics = [("Total Box", display_box), ("Total Palettes", display_pals), ("Nombre Conteneurs", display_cont)]
-    for col, (lab, val) in zip([m1, m2, m3], metrics):
-        col.markdown(f'<div class="metric-container"><p class="metric-label">{lab}</p><p class="metric-value">{val}</p></div>', unsafe_allow_html=True)
+    m1.markdown(f'<div class="metric-container"><p class="metric-label">Nombre de Box</p><p class="metric-value">{disp_box}</p></div>', unsafe_allow_html=True)
+    m2.markdown(f'<div class="metric-container"><p class="metric-label">Total Palettes</p><p class="metric-value">{disp_pals}</p></div>', unsafe_allow_html=True)
+    m3.markdown(f'<div class="metric-container"><p class="metric-label">Nombre Conteneurs</p><p class="metric-value">{disp_cont}</p></div>', unsafe_allow_html=True)
 
+    # 5. SECTION PINWHEEL (AVEC IMAGE ET TABLEAU COMPLET)
     st.markdown("---")
-    st.subheader("📊 Répartition de la Charge Utile")
-    total_brut = res['poids_total_brut']
-    if total_brut > 0:
-        st.markdown(f"""<div style="width: 100%; background-color: #eee; border-radius: 10px; height: 30px; display: flex; overflow: hidden; border: 1px solid #ddd;"><div style="width: {(res['poids_total_box']/total_brut)*100}%; background: #e67e22; height: 100%;"></div><div style="width: {(res['poids_total_supports']/total_brut)*100}%; background: #2c3e50; height: 100%;"></div></div>""", unsafe_allow_html=True)
+    st.subheader("📐 Optimisation Pinwheel (Chargement Mixte)")
 
-# ==========================================
-# 6. RAPPORT D'OPTIMISATION PINWHEEL (TABLEAU COMPLET)
-# ==========================================
-st.subheader("📐 Optimisation du Chargement Mixte (Pinwheel)")
+    
 
+    st.markdown(f"""
+    <table class="recap-table">
+        <thead><tr><th>Zone</th><th>Orientation</th><th>Sol</th><th>Niveaux</th><th>Total</th></tr></thead>
+        <tbody>
+            <tr><td><b>Zone Principale</b></td><td>{res['orient']}</td><td>{res['nx'] * res['ny']}</td><td>x{res['niveaux']}</td><td><b>{(res['nx']*res['ny'])*res['niveaux']}</b></td></tr>
+            <tr><td><b>Zone Pinwheel</b></td><td>Rotation 90°</td><td>{res['extra_p']}</td><td>x{res['niveaux']}</td><td><b>{res['extra_p']*res['niveaux']}</b></td></tr>
+            <tr style="background:#f8f9fa; border-top:3px solid #e67e22;">
+                <td colspan="2"><b>CAPACITÉ PAR ÉQUIPEMENT</b></td><td>{res['palettes_sol']} sol</td><td>Marge -5cm</td><td style="color:#e67e22; font-weight:bold; font-size:1.2rem;">{res['total_palettes']}</td>
+            </tr>
+        </tbody>
+    </table>
+    """, unsafe_allow_html=True)
 
-
-st.markdown(f"""
-<table class="recap-table">
-    <thead>
-        <tr>
-            <th>Disposition</th>
-            <th>Orientation</th>
-            <th>Palettes au sol</th>
-            <th>Gerbage (H)</th>
-            <th>Total Palettes</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td><b>Sens Principal</b></td>
-            <td>{res['orient']}</td>
-            <td>{res['nx'] * res['ny']}</td>
-            <td>x {res['niveaux']} niveaux</td>
-            <td><b>{(res['nx'] * res['ny']) * res['niveaux']}</b></td>
-        </tr>
-        <tr>
-            <td><b>Sens Pinwheel (Extra)</b></td>
-            <td>Tournée à 90°</td>
-            <td>{res['extra_p']}</td>
-            <td>x {res['niveaux']} niveaux</td>
-            <td><b>{res['extra_p'] * res['niveaux']}</b></td>
-        </tr>
-        <tr style="background:#f8f9fa; border-top: 3px solid #e67e22;">
-            <td colspan="2"><b>CAPACITÉ PAR CONTENEUR</b></td>
-            <td style="font-weight:bold;">{res['palettes_sol']} (Sol)</td>
-            <td colspan="1">Marge de sécurité (-5cm)</td>
-            <td style="color:#e67e22; font-weight:bold; font-size:1.2rem;">{res['total_palettes']}</td>
-        </tr>
-    </tbody>
-</table>
-""", unsafe_allow_html=True)
-
-df_res = pd.DataFrame({"Item": ["Palettes", "Poids (kg)", "Conteneurs"], "Valeur": [display_pals, res['poids_total_brut'], display_cont]})
-xl_file = get_excel_binary(df_res, pd.DataFrame([c_specs]))
-st.download_button("📥 TÉLÉCHARGER LE RAPPORT", xl_file, "Export_Logistique.xlsx")
-
-if False:
-    st.write("Section neutralisée")
+    # 6. EXPORT
+    st.download_button("📥 TÉLÉCHARGER LE RAPPORT EXCEL", BytesIO().getvalue(), "Rapport_Export.xlsx")
